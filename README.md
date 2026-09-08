@@ -1,21 +1,23 @@
 # Ultra Fast Clinical Copilot
 
-Current release: **V1.0.6**
+Current release: **V1.0.7**
 
-V1.0.6 preserves the automatic multilingual dictation and English clinical output introduced in V1.0.5, and adds:
+V1.0.7 preserves automatic multilingual dictation with English clinical output and adds a more precise patient-information and reasoning workflow:
 
-- Exact age calculation in years, months and days after DOB entry.
-- Direct age-in-years entry when DOB is unknown.
-- Automatic gestational-age calculation from LNMP.
-- Sex at birth restricted to Female, Male or Unknown.
-- Automatic Pregnancy Status = Not applicable when sex at birth is Male.
-- One visible Allergies and reactions field, with the duplicated allergy-status question removed from the workflow.
-- Renal, hepatic, cardiac, diabetic and hypertension status fields, all defaulting to Unknown and allowing Known details.
-- An AI-assisted relative differential ranking of up to 10 diagnoses: red for higher relative likelihood, yellow for intermediate, and green for lower likelihood. Must-not-miss conditions remain separately flagged.
+- DOB automatically calculates age in separate years, months and days fields.
+- Age in years can be entered directly when DOB is unknown.
+- LNMP automatically calculates gestational age in weeks and days.
+- Sex at birth is restricted to Female, Male or Unknown.
+- Male automatically sets Pregnancy status to Not applicable and disables LNMP/gestation fields.
+- Only one visible Allergies and reactions field remains; the duplicated allergy-status question is removed while an internal medication-safety completion value is retained.
+- Renal, hepatic, cardiac, diabetic and hypertension status all default to Unknown; Known reveals a details field.
+- Negation-aware narrative review avoids treating explicitly denied symptoms as positive complaints.
+- Up to 10 differential diagnoses are relatively ranked: red for most likely/highest supported, yellow for probable/intermediate, and green for possible/lower supported. Must-not-miss conditions remain independently flagged.
 
 ## Entry points
 
-- `index.html`: current GitHub Pages release, V1.0.6
+- `index.html`: redirects to the current release, V1.0.7
+- `v1.0.7.html`: preserved V1.0.7 entry point
 - `v1.0.6.html`: preserved V1.0.6 entry point
 - `v1.0.5.html`: preserved V1.0.5 entry point
 - `v1.0.4.html`: preserved V1.0.4 entry point
