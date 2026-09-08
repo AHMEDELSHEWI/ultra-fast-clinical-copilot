@@ -4,27 +4,51 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b5fff">
-  <title>Ultra Fast Clinical Copilot V1.0.4</title>
+  <meta name="description" content="Ultra Fast Clinical Copilot V1.0.5 with automatic multilingual dictation and English clinical output.">
+  <title>Ultra Fast Clinical Copilot V1.0.5</title>
   <style>
     html,body{margin:0;min-height:100%;font-family:Arial,sans-serif;background:#f4f7fb;color:#10243e}
     main{min-height:100vh;display:grid;place-items:center;padding:24px;box-sizing:border-box}
-    section{width:min(520px,100%);padding:24px;border:1px solid #dce6f1;border-radius:20px;background:#fff;box-shadow:0 12px 34px rgba(16,36,62,.10);text-align:center}
-    strong{display:block;font-size:1.1rem;margin-bottom:8px}p{color:#51677f;line-height:1.6}a{color:#0b5fff}
+    section{width:min(560px,100%);padding:24px;border:1px solid #dce6f1;border-radius:20px;background:#fff;box-shadow:0 12px 34px rgba(16,36,62,.10);text-align:center}
+    strong{display:block;font-size:1.1rem;margin-bottom:8px}p{color:#51677f;line-height:1.6}.bar{height:8px;margin-top:16px;border-radius:999px;overflow:hidden;background:#dce6f1}.bar i{display:block;width:45%;height:100%;background:#0b5fff;animation:load 1.2s ease-in-out infinite alternate}@keyframes load{to{transform:translateX(120%)}}
   </style>
 </head>
 <body>
-  <main><section><strong>Loading Ultra Fast Clinical Copilot V1.0.4</strong><p>Preparing multilingual dictation…</p><p id="loadError" hidden></p></section></main>
+  <main><section><strong>Loading Ultra Fast Clinical Copilot V1.0.5</strong><p>Preparing automatic multilingual dictation with English clinical output…</p><div class="bar"><i></i></div><p id="loadError" hidden></p></section></main>
   <script>
-    (async function loadV104() {
+    (async function loadV105() {
       try {
-        const response = await fetch('./index-ultra-fast-clinical-copilot.html?v=1.0.4-source', { cache: 'no-store' });
+        const response = await fetch('./index-ultra-fast-clinical-copilot.html?v=1.0.5-source', { cache: 'no-store' });
         if (!response.ok) throw new Error('Unable to load the clinical application: HTTP ' + response.status);
         let html = await response.text();
-        html = html.replace("const APP_VERSION = '1.0.2';", "const APP_VERSION = '1.0.4';");
-        html = html.replace('single-file-offline-v1.0.3', 'github-pages-v1.0.4');
-        const patchTag = '<script src="./v1.0.4-voice-patch.js?v=1.0.4"><' + '/script>';
+
+        html = html.replace("const APP_VERSION = '1.0.2';", "const APP_VERSION = '1.0.5';");
+        html = html.replace("const APP_VERSION = '1.0.4';", "const APP_VERSION = '1.0.5';");
+        html = html.replace('Clinical core V1.0.4', 'Clinical core V1.0.5');
+        html = html.replace('single-file-offline-v1.0.3', 'github-pages-v1.0.5');
+
+        // V1.0.5 has no visible language/dialect selector.
+        html = html.replace('renderVoiceLanguageSelector() + ', '');
+
+        // Clinical documentation output remains English even when the interface is Arabic.
+        html = html.replace(/Core\.buildDocumentation\(appState\.snapshot, Content, appState\.language\)/g, "Core.buildDocumentation(appState.snapshot, Content, 'en')");
+        html = html.replace(/Core\.buildDocumentation\(Core\.migrateCase\(version\.snapshot\), Content, appState\.language\)/g, "Core.buildDocumentation(Core.migrateCase(version.snapshot), Content, 'en')");
+        html = html.replace(/Core\.buildReferral\(appState\.snapshot, Content, appState\.language\)/g, "Core.buildReferral(appState.snapshot, Content, 'en')");
+        html = html.replace(/Core\.buildDischarge\(appState\.snapshot, Content, appState\.language\)/g, "Core.buildDischarge(appState.snapshot, Content, 'en')");
+
+        html = html.replace(
+          'The local parser is deterministic and sends no data to the internet.',
+          'Automatic multilingual speech is converted into English on this device; clinician review and deterministic extraction remain local.'
+        );
+        html = html.replace(
+          'المحلل المحلي حتمي ولا يرسل البيانات إلى الإنترنت.',
+          'يُحوّل الكلام متعدد اللغات تلقائيًا إلى الإنجليزية على هذا الجهاز، مع بقاء المراجعة والاستخراج الحتمي محليًا.'
+        );
+
+        const patchTag = '<script src="./v1.0.5-auto-english-voice.js?v=1.0.5"><' + '/script>';
         if (html.includes('</body>')) html = html.replace('</body>', patchTag + '</body>');
         else html += patchTag;
+
         document.open();
         document.write(html);
         document.close();
@@ -32,7 +56,7 @@
         const target = document.getElementById('loadError');
         if (target) {
           target.hidden = false;
-          target.textContent = (error && error.message ? error.message : 'Load failed') + '. Open the source file and refresh.';
+          target.textContent = (error && error.message ? error.message : 'Load failed') + '. Refresh the page while connected to the internet.';
         }
       }
     })();
