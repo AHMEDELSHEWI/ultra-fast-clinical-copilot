@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b5fff">
+  <title>Ultra Fast Clinical Copilot V1.0.4</title>
+  <style>
+    html,body{margin:0;min-height:100%;font-family:Arial,sans-serif;background:#f4f7fb;color:#10243e}
+    main{min-height:100vh;display:grid;place-items:center;padding:24px;box-sizing:border-box}
+    section{width:min(520px,100%);padding:24px;border:1px solid #dce6f1;border-radius:20px;background:#fff;box-shadow:0 12px 34px rgba(16,36,62,.10);text-align:center}
+    strong{display:block;font-size:1.1rem;margin-bottom:8px}p{color:#51677f;line-height:1.6}a{color:#0b5fff}
+  </style>
+</head>
+<body>
+  <main><section><strong>Loading Ultra Fast Clinical Copilot V1.0.4</strong><p>Preparing multilingual dictation…</p><p id="loadError" hidden></p></section></main>
+  <script>
+    (async function loadV104() {
+      try {
+        const response = await fetch('./index-ultra-fast-clinical-copilot.html?v=1.0.4-source', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Unable to load the clinical application: HTTP ' + response.status);
+        let html = await response.text();
+        html = html.replace("const APP_VERSION = '1.0.2';", "const APP_VERSION = '1.0.4';");
+        html = html.replace('single-file-offline-v1.0.3', 'github-pages-v1.0.4');
+        const patchTag = '<script src="./v1.0.4-voice-patch.js?v=1.0.4"><' + '/script>';
+        if (html.includes('</body>')) html = html.replace('</body>', patchTag + '</body>');
+        else html += patchTag;
+        document.open();
+        document.write(html);
+        document.close();
+      } catch (error) {
+        const target = document.getElementById('loadError');
+        if (target) {
+          target.hidden = false;
+          target.textContent = (error && error.message ? error.message : 'Load failed') + '. Open the source file and refresh.';
+        }
+      }
+    })();
+  </script>
+</body>
+</html>
