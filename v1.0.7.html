@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b5fff">
+  <meta name="description" content="Ultra Fast Clinical Copilot V1.0.7 with precise DOB age calculation, LNMP gestation, one allergy field, explicit Unknown defaults and negation-aware AI-ranked differential support.">
+  <title>Ultra Fast Clinical Copilot V1.0.7</title>
+  <style>
+    html,body{margin:0;min-height:100%;font-family:Arial,sans-serif;background:#f4f7fb;color:#10243e}
+    main{min-height:100vh;display:grid;place-items:center;padding:24px;box-sizing:border-box}
+    section{width:min(580px,100%);padding:24px;border:1px solid #dce6f1;border-radius:20px;background:#fff;box-shadow:0 12px 34px rgba(16,36,62,.10);text-align:center}
+    strong{display:block;font-size:1.1rem;margin-bottom:8px}p{color:#51677f;line-height:1.6}.bar{height:8px;margin-top:16px;border-radius:999px;overflow:hidden;background:#dce6f1}.bar i{display:block;width:45%;height:100%;background:#0b5fff;animation:load 1.2s ease-in-out infinite alternate}@keyframes load{to{transform:translateX(120%)}}
+  </style>
+</head>
+<body>
+  <main><section><strong>Loading Ultra Fast Clinical Copilot V1.0.7</strong><p>Preparing precise age, LNMP gestation, single-allergy safety and negation-aware ranked differential support…</p><div class="bar"><i></i></div><p id="loadError" hidden></p></section></main>
+  <script>
+    (async function loadV107() {
+      try {
+        const response = await fetch('./index-ultra-fast-clinical-copilot.html?v=1.0.7-source', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Unable to load the clinical application: HTTP ' + response.status);
+        let html = await response.text();
+
+        function required(search, replacement, label) {
+          const before = html;
+          html = html.replace(search, replacement);
+          if (html === before) throw new Error('V1.0.7 integration failed: ' + label);
+        }
+
+        if (!/const APP_VERSION = '[^']+';/.test(html)) throw new Error('V1.0.7 integration failed: application version');
+        html = html.replace(/const APP_VERSION = '[^']+';/, "const APP_VERSION = '1.0.7';");
+        html = html.replace('Clinical core V1.0.2', 'Clinical core V1.0.7');
+        html = html.replace('Clinical core V1.0.4', 'Clinical core V1.0.7');
+        html = html.replace('Clinical core V1.0.5', 'Clinical core V1.0.7');
+        html = html.replace('single-file-offline-v1.0.3', 'github-pages-v1.0.7');
+
+        html = html.replace('renderVoiceLanguageSelector() + ', '');
+
+        required(
+          "        allergiesKnown: null,\n        allergies: null,\n        renalStatus: null,\n        hepaticStatus: null",
+          "        allergiesKnown: null,\n        allergies: null,\n        renalStatus: null,\n        hepaticStatus: null,\n        cardiacStatus: null,\n        diabeticStatus: null,\n        hypertensionStatus: null,\n        lnmp: null,\n        ageExact: null,\n        ageDays: null,\n        gestationalAgeExact: null,\n        gestationalAgeDays: null",
+          'patient schema'
+        );
+        required(
+          "['localIdentifier','nameOrInitials','dateOfBirth','renalStatus','hepaticStatus','allergies']",
+          "['localIdentifier','nameOrInitials','dateOfBirth','renalStatus','hepaticStatus','cardiacStatus','diabeticStatus','hypertensionStatus','lnmp','ageExact','gestationalAgeExact','allergies']",
+          'patient persistence'
+        );
+        required(
+          "['ageYears','ageMonths','gestationalAgeWeeks']",
+          "['ageYears','ageMonths','ageDays','gestationalAgeWeeks','gestationalAgeDays']",
+          'age and gestation component persistence'
+        );
+        required(
+          "factValue(caseData.patient.allergiesKnown) === null",
+          "factValue(caseData.patient.allergiesKnown) !== true",
+          'allergy safety validation'
+        );
+        required(
+          '"q_major_active_bleeding","q_allergies_known","q_onset"',
+          '"q_major_active_bleeding","q_onset"',
+          'single allergy workflow'
+        );
+
+        html = html.replace(/\{"value":"intersex","label":"Intersex \/ variation","labelAr":"اختلاف في التطور الجنسي"\},/g, '');
+        html = html.replace(/, \{ value: 'intersex', label: 'Intersex \/ variation', labelAr: 'اختلاف في التطور الجنسي' \}/g, '');
+
+        required(
+          "      ageInYears(caseData) !== null ? (lang === 'ar' ? 'العمر: ' : 'Age: ') + round(ageInYears(caseData), 2) + (lang === 'ar' ? ' سنة' : ' years') : null,\n      factValue(patient.sexAtBirth)",
+          "      factValue(patient.ageExact) !== null ? (lang === 'ar' ? 'العمر الدقيق: ' : 'Exact age: ') + displayValue(factValue(patient.ageExact)) : (ageInYears(caseData) !== null ? (lang === 'ar' ? 'العمر: ' : 'Age: ') + round(ageInYears(caseData), 2) + (lang === 'ar' ? ' سنة' : ' years') : null),\n      factValue(patient.sexAtBirth)",
+          'exact age documentation'
+        );
+        required(
+          "      factValue(patient.pregnancyStatus) !== null ? (lang === 'ar' ? 'حالة الحمل: ' : 'Pregnancy status: ') + displayValue(factValue(patient.pregnancyStatus)) : null,\n      factValue(patient.weightKg)",
+          "      factValue(patient.pregnancyStatus) !== null ? (lang === 'ar' ? 'حالة الحمل: ' : 'Pregnancy status: ') + displayValue(factValue(patient.pregnancyStatus)) : null,\n      factValue(patient.lnmp) !== null ? 'LNMP: ' + displayValue(factValue(patient.lnmp)) : null,\n      factValue(patient.gestationalAgeExact) !== null ? (lang === 'ar' ? 'عمر الحمل: ' : 'Gestational age: ') + displayValue(factValue(patient.gestationalAgeExact)) : null,\n      factValue(patient.weightKg)",
+          'gestation documentation'
+        );
+        required(
+          "      factValue(patient.allergiesKnown) !== null ? (lang === 'ar' ? 'حالة الحساسية: ' : 'Allergy status: ') + displayValue(factValue(patient.allergiesKnown)) : null,\n      factValue(patient.allergies) !== null ? (lang === 'ar' ? 'الحساسيات: ' : 'Allergies: ') + displayValue(factValue(patient.allergies)) : null,\n      factValue(patient.renalStatus) !== null ? (lang === 'ar' ? 'الحالة الكلوية: ' : 'Renal status: ') + displayValue(factValue(patient.renalStatus)) : null,\n      factValue(patient.hepaticStatus) !== null ? (lang === 'ar' ? 'الحالة الكبدية: ' : 'Hepatic status: ') + displayValue(factValue(patient.hepaticStatus)) : null",
+          "      factValue(patient.allergies) !== null ? (lang === 'ar' ? 'الحساسيات والتفاعلات: ' : 'Allergies and reactions: ') + displayValue(factValue(patient.allergies)) : null,\n      factValue(patient.renalStatus) !== null ? (lang === 'ar' ? 'الحالة الكلوية: ' : 'Renal status: ') + displayValue(factValue(patient.renalStatus)) : null,\n      factValue(patient.hepaticStatus) !== null ? (lang === 'ar' ? 'الحالة الكبدية: ' : 'Hepatic status: ') + displayValue(factValue(patient.hepaticStatus)) : null,\n      factValue(patient.cardiacStatus) !== null ? (lang === 'ar' ? 'حالة القلب: ' : 'Cardiac status: ') + displayValue(factValue(patient.cardiacStatus)) : null,\n      factValue(patient.diabeticStatus) !== null ? (lang === 'ar' ? 'حالة السكري: ' : 'Diabetic status: ') + displayValue(factValue(patient.diabeticStatus)) : null,\n      factValue(patient.hypertensionStatus) !== null ? (lang === 'ar' ? 'حالة ضغط الدم: ' : 'Hypertension status: ') + displayValue(factValue(patient.hypertensionStatus)) : null",
+          'status documentation'
+        );
+
+        html = html.replace(/Core\.buildDocumentation\(appState\.snapshot, Content, appState\.language\)/g, "Core.buildDocumentation(appState.snapshot, Content, 'en')");
+        html = html.replace(/Core\.buildDocumentation\(Core\.migrateCase\(version\.snapshot\), Content, appState\.language\)/g, "Core.buildDocumentation(Core.migrateCase(version.snapshot), Content, 'en')");
+        html = html.replace(/Core\.buildReferral\(appState\.snapshot, Content, appState\.language\)/g, "Core.buildReferral(appState.snapshot, Content, 'en')");
+        html = html.replace(/Core\.buildDischarge\(appState\.snapshot, Content, appState\.language\)/g, "Core.buildDischarge(appState.snapshot, Content, 'en')");
+        html = html.replace(/Content, appState\.language\)/g, "Content, 'en')");
+
+        html = html.replace(
+          'The local parser is deterministic and sends no data to the internet.',
+          'Automatic multilingual speech is converted into English on this device; clinician review and deterministic extraction remain local.'
+        );
+        html = html.replace(
+          'المحلل المحلي حتمي ولا يرسل البيانات إلى الإنترنت.',
+          'يُحوّل الكلام متعدد اللغات تلقائيًا إلى الإنجليزية على هذا الجهاز، مع بقاء المراجعة والاستخراج الحتمي محليًا.'
+        );
+
+        const modules = [
+          '<script src="./v1.0.5-auto-english-voice.js?v=1.0.5"><' + '/script>',
+          '<script src="./v1.0.6-clinical-ux.js?v=1.0.6"><' + '/script>',
+          '<script src="./v1.0.7-precision-loader.js?v=1.0.7"><' + '/script>'
+        ].join('');
+        if (html.includes('</body>')) html = html.replace('</body>', modules + '</body>');
+        else html += modules;
+
+        document.open();
+        document.write(html);
+        document.close();
+      } catch (error) {
+        const target = document.getElementById('loadError');
+        if (target) {
+          target.hidden = false;
+          target.textContent = (error && error.message ? error.message : 'Load failed') + '. Refresh the page while connected to the internet.';
+        }
+      }
+    })();
+  </script>
+</body>
+</html>
