@@ -47,6 +47,11 @@
           "['localIdentifier','nameOrInitials','dateOfBirth','renalStatus','hepaticStatus','cardiacStatus','diabeticStatus','hypertensionStatus','lnmp','ageExact','gestationalAgeExact','allergies']",
           'patient persistence'
         );
+        required(
+          "factValue(caseData.patient.allergiesKnown) === null",
+          "factValue(caseData.patient.allergiesKnown) !== true",
+          'allergy safety validation'
+        );
         required('"q_major_active_bleeding","q_allergies_known","q_onset"','"q_major_active_bleeding","q_onset"','single allergy workflow');
         html = html.replace(/\{"value":"intersex","label":"Intersex \/ variation","labelAr":"اختلاف في التطور الجنسي"\},/g, '');
         html = html.replace(/, \{ value: 'intersex', label: 'Intersex \/ variation', labelAr: 'اختلاف في التطور الجنسي' \}/g, '');
