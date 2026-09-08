@@ -35,6 +35,8 @@
         html = html.replace(/Core\.buildDocumentation\(Core\.migrateCase\(version\.snapshot\), Content, appState\.language\)/g, "Core.buildDocumentation(Core.migrateCase(version.snapshot), Content, 'en')");
         html = html.replace(/Core\.buildReferral\(appState\.snapshot, Content, appState\.language\)/g, "Core.buildReferral(appState.snapshot, Content, 'en')");
         html = html.replace(/Core\.buildDischarge\(appState\.snapshot, Content, appState\.language\)/g, "Core.buildDischarge(appState.snapshot, Content, 'en')");
+        // Catch every remaining documentation/referral/discharge call that still follows the UI language.
+        html = html.replace(/Content, appState\.language\)/g, "Content, 'en')");
 
         html = html.replace(
           'The local parser is deterministic and sends no data to the internet.',
