@@ -6,8 +6,8 @@ on:
     paths:
       - 'index.html'
       - 'v1.0.8.html'
-      - 'v1.0.8-ui-loader.js'
-      - 'v1.0.8-ultrafast-ui.part*.js'
+      - 'v1.0.8-rapid-loader.js'
+      - 'v1.0.8-rapid-payload-*.b64'
       - '.github/workflows/v108-repository-qa.yml'
   workflow_dispatch:
 
@@ -19,43 +19,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify every deployed V1.0.8 fragment
+
+      - name: Verify deployed V1.0.8 files
         shell: bash
         run: |
           set -euo pipefail
-          cat > /tmp/v108-parts.sha256 <<'EOF'
-          63ded6fb6638989f6ef123c6adae75ac80de89047a9c74df75326ae3390d8ff2  v1.0.8-ultrafast-ui.part01.js
-          ce97a20a389e9b0fb7796d616ae00ff12724bd545e712ea332c6640285e25d3b  v1.0.8-ultrafast-ui.part02.js
-          116c5beb503b4dd733c1dc10be0f7d67fef99b57c5237b7d67737291e4f41138  v1.0.8-ultrafast-ui.part03.js
-          82f6c82a42692f7cad85605cb7b1858432669a098a2fd81cd0a6a417d66daf54  v1.0.8-ultrafast-ui.part04.js
-          e5f37c1f3d4c2b29a3c84f5b2c7ff6b1225381afd430dc36681353dc636bfaf1  v1.0.8-ultrafast-ui.part05.js
-          9b61b5aabf6556ab75b6c5f2908197dcc102e993698032c162e920bc5f1f5fd3  v1.0.8-ultrafast-ui.part06.js
-          07060a48ddba25a4ad7edcbc79965faebe36291f43b150dc0bb1ac49ba9fc1b5  v1.0.8-ultrafast-ui.part07.js
-          e8c98d462ad126916a5e6c785b2e9a7cce4621e6fb7cc0065237029ad1c78cb7  v1.0.8-ultrafast-ui.part08.js
-          a8554b1e24450ea48b0276bfe1e06b1fcf557d73d102ba2c08b89d0b74fc5656  v1.0.8-ultrafast-ui.part09.js
-          0334dfbf1c4289c0461cad4697763be50a5baad539227ffd518530bdd073a9cd  v1.0.8-ultrafast-ui.part10.js
-          c66870c8ec33336dddd7bc4870f9d63ce4b57100882f9623091cfae691c53a95  v1.0.8-ultrafast-ui.part11.js
-          c1cef7432f0021fe42e90239162d2f48fbcb1b5a503b6e8446eddf3fca1e9404  v1.0.8-ultrafast-ui.part12.js
-          1db4a7bea7329bfd7bc0abe7ade02d276574bbb0f1462ab81081b584df5b9d4a  v1.0.8-ultrafast-ui.part13.js
-          01268afeb41455e533eebe1e88fae4f817ec487df18addd98d05adbb87dda60a  v1.0.8-ultrafast-ui.part14.js
-          ab7120d7a51fd45547f9d735e4fc4d9eaf0e55602d0be016da1cddc205e4f7e4  v1.0.8-ultrafast-ui.part15.js
-          8e82a425e8cb485f9624a3233c3dfddb2fa66848cab0e7a8d942002f3c6b0380  v1.0.8-ultrafast-ui.part16.js
+          cat > /tmp/v108-files.sha256 <<'EOF'
+          e8a0f74e636d74842a3108c057a427c22ee475e9b8e18ba6a9a9cb4f310d6d4e  v1.0.8-rapid-payload-00.b64
+          74a6df7e0b82f0f31cd8fcda05e4e2d4b4daa4dae945f310b595d60246105272  v1.0.8-rapid-payload-01.b64
+          229589ba2d99640dde07ac4871fa314fb75eff2017378db502dd5cc38f838d3a  v1.0.8-rapid-payload-02.b64
+          5125529d0ec69692eaddeb79179900502277079da20b0a837be6f6f7532ff2d6  v1.0.8-rapid-payload-03.b64
+          f2993e0885f7e4d326c4e55a610393d703979687013cbf1d0cc53c10938dcc27  v1.0.8-rapid-payload-04.b64
+          dba8bff6cac2c9e875450bc3f0bd92234c7970cdef424612a10e6b0b8d6100ac  v1.0.8-rapid-payload-05.b64
+          593a7405b1d2b5e6f9b0e8dcf9ee07ed08b11111b646249f4cf3f73a55858ef6  v1.0.8-rapid-payload-06.b64
+          633195bd27dad6179e9e924507bc7cfc4e71ead03b08d3b6ff8fcfea1d87170e  v1.0.8-rapid-loader.js
+          2c6226d91d7fb4c920c7ffb7216a6ec139c7472b2aad3e8417f1f0bb4fd7ae99  v1.0.8.html
           EOF
-          sha256sum -c /tmp/v108-parts.sha256
-      - name: Reassemble and syntax-check the V1.0.8 UI module
+          sha256sum -c /tmp/v108-files.sha256
+
+      - name: Reassemble, verify and syntax-check rapid UX
         shell: bash
         run: |
           set -euo pipefail
-          cat v1.0.8-ultrafast-ui.part{01..16}.js > /tmp/v1.0.8-ultrafast-ui.js
-          echo 'a8133276a2410f64ce983646f2888ee4d363dc1179d6f8adb8f76d4eb127579d  /tmp/v1.0.8-ultrafast-ui.js' | sha256sum -c -
-          node --check /tmp/v1.0.8-ultrafast-ui.js
-      - name: Verify loader and entry point
+          cat v1.0.8-rapid-payload-{00..06}.b64 > /tmp/v108-payload.b64
+          base64 --decode /tmp/v108-payload.b64 > /tmp/v108-payload.gz
+          gzip --decompress --stdout /tmp/v108-payload.gz > /tmp/v1.0.8-rapid-ux.js
+          echo '471ee2cd01cece55a023bd44c8373c01f1f85161082a41768072075af1c1adb3  /tmp/v1.0.8-rapid-ux.js' | sha256sum -c -
+          node --check /tmp/v1.0.8-rapid-ux.js
+          node --check v1.0.8-rapid-loader.js
+
+      - name: Verify entry points
         shell: bash
         run: |
           set -euo pipefail
-          echo '8634b33659107e13718fccea930b8f9001368b6befbcaa41509225e124c100c7  v1.0.8-ui-loader.js' | sha256sum -c -
-          echo '2977ffdd9bd65d8b34aff6943bc987251018056efa80120c9921f50a56398fcf  v1.0.8.html' | sha256sum -c -
-          node --check v1.0.8-ui-loader.js
           grep -q "V1.0.8" v1.0.8.html
-          grep -q "v1.0.8-ui-loader.js" v1.0.8.html
+          grep -q "v1.0.8-rapid-loader.js" v1.0.8.html
           grep -q "v1.0.8.html" index.html
+          grep -q "procedureStatus" v1.0.8.html
