@@ -1,0 +1,38 @@
+name: V1.0.8 repository integrity
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'v1.0.8.html'
+      - 'v1.0.8-ui-loader.js'
+      - 'v1.0.8-ultrafast-ui.part*.js'
+      - '.github/workflows/v108-repository-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-v108:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reassemble and verify the V1.0.8 UI module
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat v1.0.8-ultrafast-ui.part{01..16}.js > /tmp/v1.0.8-ultrafast-ui.js
+          echo 'a8133276a2410f64ce983646f2888ee4d363dc1179d6f8adb8f76d4eb127579d  /tmp/v1.0.8-ultrafast-ui.js' | sha256sum -c -
+          node --check /tmp/v1.0.8-ultrafast-ui.js
+      - name: Verify loader and entry point
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '8634b33659107e13718fccea930b8f9001368b6befbcaa41509225e124c100c7  v1.0.8-ui-loader.js' | sha256sum -c -
+          echo '2977ffdd9bd65d8b34aff6943bc987251018056efa80120c9921f50a56398fcf  v1.0.8.html' | sha256sum -c -
+          node --check v1.0.8-ui-loader.js
+          grep -q "V1.0.8" v1.0.8.html
+          grep -q "v1.0.8-ui-loader.js" v1.0.8.html
+          grep -q "v1.0.8.html" index.html
