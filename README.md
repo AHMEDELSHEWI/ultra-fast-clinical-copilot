@@ -1,31 +1,24 @@
 # Ultra Fast Clinical Copilot
 
-Current release: **V1.0.7**
+Current release: **V1.0.8**
 
-V1.0.7 preserves automatic multilingual dictation with English clinical output and adds a more precise patient-information and reasoning workflow:
+V1.0.8 keeps automatic multilingual dictation with English clinical documentation and introduces a faster, tap-first workflow:
 
-- DOB automatically calculates age in separate years, months and days fields.
-- Age in years can be entered directly when DOB is unknown.
-- LNMP automatically calculates gestational age in weeks and days.
-- Sex at birth is restricted to Female, Male or Unknown.
-- Male automatically sets Pregnancy status to Not applicable and disables LNMP/gestation fields.
-- Only one visible Allergies and reactions field remains; the duplicated allergy-status question is removed while an internal medication-safety completion value is retained.
-- Renal, hepatic, cardiac, diabetic and hypertension status all default to Unknown; Known reveals a details field.
-- Negation-aware narrative review avoids treating explicitly denied symptoms as positive complaints.
-- Up to 10 differential diagnoses are relatively ranked: red for most likely/highest supported, yellow for probable/intermediate, and green for possible/lower supported. Must-not-miss conditions remain independently flagged.
+- Concise off-canvas navigation and an ordered Patient, Complaint, History, Exam, Tests, Reason, Treat, Procedure, Disposition and Note flow.
+- Range sliders, presets and clinical choice chips to minimise keyboard use.
+- Focused examination selected from the active complaint, separated from history taking.
+- Quick investigation console with instant unit conversion, common adult reference ranges and colour-coded Normal, High, Low or Review results. Local laboratory ranges always take precedence.
+- Quick non-drug interventions plus the governed seven-field medication workflow.
+- Procedures explicitly recorded as Requested/planned or Completed.
+- JGH OnCall link within referral/disposition and Copy All for connected English documentation.
+- Automatic DOB age, LNMP gestation, one allergy field, Unknown comorbidity defaults and negation-aware differential ranking inherited from V1.0.7.
 
 ## Entry points
 
-- `index.html`: redirects to the current release, V1.0.7
-- `v1.0.7.html`: preserved V1.0.7 entry point
-- `v1.0.6.html`: preserved V1.0.6 entry point
-- `v1.0.5.html`: preserved V1.0.5 entry point
-- `v1.0.4.html`: preserved V1.0.4 entry point
+- `index.html`: current release redirect, V1.0.8
+- `v1.0.8.html`: preserved V1.0.8 entry point
+- `v1.0.7.html`: previous preserved release
 
-## Important operating notes
+## Safety
 
-- Open the application over HTTPS in a current Chrome browser and allow microphone access.
-- The first voice use downloads the multilingual browser model and can take longer than later uses.
-- Differential colours represent relative ranking, not clinical severity or calibrated probability.
-- Speech recognition, translation and differential ranking can make clinically important errors. A clinician must review and correct every generated field, diagnosis, number, negation and medication detail before use.
-- Do not use this software for real-patient care without institutional clinical, privacy, security, medication, human-factors and regulatory validation.
+The application is clinical decision support only. Speech recognition, unit conversion, reference intervals, differential ranking, investigations, medication content and disposition require clinician verification and local institutional validation before patient care use.
