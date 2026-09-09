@@ -19,7 +19,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Reassemble and verify the V1.0.8 UI module
+      - name: Verify every deployed V1.0.8 fragment
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/v108-parts.sha256 <<'EOF'
+          63ded6fb6638989f6ef123c6adae75ac80de89047a9c74df75326ae3390d8ff2  v1.0.8-ultrafast-ui.part01.js
+          ce97a20a389e9b0fb7796d616ae00ff12724bd545e712ea332c6640285e25d3b  v1.0.8-ultrafast-ui.part02.js
+          116c5beb503b4dd733c1dc10be0f7d67fef99b57c5237b7d67737291e4f41138  v1.0.8-ultrafast-ui.part03.js
+          82f6c82a42692f7cad85605cb7b1858432669a098a2fd81cd0a6a417d66daf54  v1.0.8-ultrafast-ui.part04.js
+          e5f37c1f3d4c2b29a3c84f5b2c7ff6b1225381afd430dc36681353dc636bfaf1  v1.0.8-ultrafast-ui.part05.js
+          9b61b5aabf6556ab75b6c5f2908197dcc102e993698032c162e920bc5f1f5fd3  v1.0.8-ultrafast-ui.part06.js
+          07060a48ddba25a4ad7edcbc79965faebe36291f43b150dc0bb1ac49ba9fc1b5  v1.0.8-ultrafast-ui.part07.js
+          e8c98d462ad126916a5e6c785b2e9a7cce4621e6fb7cc0065237029ad1c78cb7  v1.0.8-ultrafast-ui.part08.js
+          a8554b1e24450ea48b0276bfe1e06b1fcf557d73d102ba2c08b89d0b74fc5656  v1.0.8-ultrafast-ui.part09.js
+          0334dfbf1c4289c0461cad4697763be50a5baad539227ffd518530bdd073a9cd  v1.0.8-ultrafast-ui.part10.js
+          c66870c8ec33336dddd7bc4870f9d63ce4b57100882f9623091cfae691c53a95  v1.0.8-ultrafast-ui.part11.js
+          c1cef7432f0021fe42e90239162d2f48fbcb1b5a503b6e8446eddf3fca1e9404  v1.0.8-ultrafast-ui.part12.js
+          1db4a7bea7329bfd7bc0abe7ade02d276574bbb0f1462ab81081b584df5b9d4a  v1.0.8-ultrafast-ui.part13.js
+          01268afeb41455e533eebe1e88fae4f817ec487df18addd98d05adbb87dda60a  v1.0.8-ultrafast-ui.part14.js
+          ab7120d7a51fd45547f9d735e4fc4d9eaf0e55602d0be016da1cddc205e4f7e4  v1.0.8-ultrafast-ui.part15.js
+          8e82a425e8cb485f9624a3233c3dfddb2fa66848cab0e7a8d942002f3c6b0380  v1.0.8-ultrafast-ui.part16.js
+          EOF
+          sha256sum -c /tmp/v108-parts.sha256
+      - name: Reassemble and syntax-check the V1.0.8 UI module
         shell: bash
         run: |
           set -euo pipefail
