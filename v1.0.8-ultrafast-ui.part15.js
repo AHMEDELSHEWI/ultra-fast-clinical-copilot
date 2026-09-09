@@ -66,4 +66,4 @@ ySelectorAll('#viewRoot form[data-form="medication"], #viewRoot form[data-form="
     const title = root.querySelector('.v105-copy strong');
     const subtitle = root.querySelector('.v105-copy span');
     if (title) title.textContent = tr('Auto Dictate • English note', 'إملاء تلقائي • توثيق إنجليزي');
-    if (subtitle) subtitle.textContent = tr('Speak naturally. Tap Dictate again to 
+    if (subtitle) subtitle.textContent = tr('Speak naturally. Tap Dictate again to
