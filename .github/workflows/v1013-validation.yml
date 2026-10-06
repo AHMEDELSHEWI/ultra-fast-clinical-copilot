@@ -3,6 +3,8 @@ name: V1.0.13 candidate validation
 on:
   push:
     branches: ['release/v1.0.13']
+  pull_request:
+    paths: ['v1.0.13-*.js', 'scripts/build-v1.0.13.cjs', 'tests/v1.0.13*', '.github/workflows/v1013-validation.yml']
   workflow_dispatch:
 
 permissions:
@@ -33,12 +35,26 @@ jobs:
       - name: Build from preserved baseline
         run: node scripts/build-v1.0.13.cjs
       - name: Run candidate regression tests
-        run: node --test tests/v1.0.13*.test.cjs
-      - name: Archive tested candidate
+        run: |
+          mkdir -p qa-v1.0.13
+          node --test tests/v1.0.13*.test.cjs | tee qa-v1.0.13/unit-results.tap
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install browser test dependency
+        run: |
+          python -m pip install playwright==1.57.0
+          python -m playwright install --with-deps chromium
+      - name: Run isolated browser integration checks
+        run: python tests/v1.0.13-browser.py | tee qa-v1.0.13/browser-test-output.txt
+      - name: Archive tested candidate and evidence
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: v1.0.13-tested-candidate
-          path: dist/v1.0.13/
+          path: |
+            dist/v1.0.13/
+            qa-v1.0.13/
+            docs/V1.0.13-*.md
           if-no-files-found: error
           retention-days: 30
