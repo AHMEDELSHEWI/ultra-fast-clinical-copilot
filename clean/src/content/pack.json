@@ -70,6 +70,112 @@
     "صداع",
     "شقيقة"
    ]
+  },
+  {
+   "key": "syncope",
+   "noun": "syncope",
+   "icon": "syncope",
+   "label": {
+    "en": "Fainting / blackout",
+    "ar": "إغماء"
+   },
+   "synonyms": [
+    "syncope",
+    "faint",
+    "fainting",
+    "blackout",
+    "collapse",
+    "loss of consciousness",
+    "إغماء",
+    "فقدان الوعي",
+    "دوخة وسقوط"
+   ]
+  },
+  {
+   "key": "palpitations",
+   "noun": "palpitations",
+   "icon": "heart",
+   "label": {
+    "en": "Palpitations",
+    "ar": "خفقان"
+   },
+   "synonyms": [
+    "palpitations",
+    "racing heart",
+    "irregular heartbeat",
+    "خفقان",
+    "دقات القلب"
+   ]
+  },
+  {
+   "key": "fever",
+   "noun": "fever",
+   "icon": "thermometer",
+   "label": {
+    "en": "Fever",
+    "ar": "حمى"
+   },
+   "synonyms": [
+    "fever",
+    "pyrexia",
+    "temperature",
+    "chills",
+    "حمى",
+    "سخونة",
+    "حرارة"
+   ]
+  },
+  {
+   "key": "vomiting",
+   "noun": "vomiting",
+   "icon": "stomach",
+   "label": {
+    "en": "Vomiting",
+    "ar": "قيء"
+   },
+   "synonyms": [
+    "vomiting",
+    "emesis",
+    "nausea and vomiting",
+    "قيء",
+    "استفراغ",
+    "ترجيع"
+   ]
+  },
+  {
+   "key": "altered_mental_status",
+   "noun": "altered mental status",
+   "icon": "brain",
+   "label": {
+    "en": "Confusion / altered mental status",
+    "ar": "ارتباك / تغير الوعي"
+   },
+   "synonyms": [
+    "confusion",
+    "altered mental status",
+    "ams",
+    "drowsy",
+    "unresponsive",
+    "ارتباك",
+    "تغير الوعي",
+    "نعاس"
+   ]
+  },
+  {
+   "key": "back_pain",
+   "noun": "back pain",
+   "icon": "bone",
+   "label": {
+    "en": "Back pain",
+    "ar": "ألم الظهر"
+   },
+   "synonyms": [
+    "back pain",
+    "low back pain",
+    "lumbago",
+    "ألم الظهر",
+    "وجع الظهر"
+   ]
   }
  ],
  "questions": [
@@ -912,7 +1018,8 @@
    "complaints": [
     "chest_pain",
     "dyspnea",
-    "headache"
+    "headache",
+    "palpitations"
    ],
    "priority": 56,
    "role": "assoc",
@@ -928,8 +1035,9 @@
     "ar": "هل توجد حمّى؟"
    },
    "complaints": [
-    "dyspnea",
     "abdominal_pain",
+    "altered_mental_status",
+    "dyspnea",
     "headache"
    ],
    "priority": 49,
@@ -1101,6 +1209,502 @@
      "doc": "Non-smoker"
     }
    ]
+  },
+  {
+   "id": "syncope.duration",
+   "fact": "hx.syncope.duration",
+   "type": "duration",
+   "prompt": {
+    "en": "How long has it been present?",
+    "ar": "منذ متى بدأت الأعراض؟"
+   },
+   "complaints": [
+    "syncope"
+   ],
+   "priority": 75,
+   "role": "duration",
+   "presets": [
+    {
+     "n": 30,
+     "unit": "min"
+    },
+    {
+     "n": 1,
+     "unit": "hour"
+    },
+    {
+     "n": 3,
+     "unit": "hour"
+    },
+    {
+     "n": 1,
+     "unit": "day"
+    },
+    {
+     "n": 1,
+     "unit": "week"
+    }
+   ]
+  },
+  {
+   "id": "syncope.exertional",
+   "fact": "hx.syncope.exertional",
+   "type": "yesno",
+   "prompt": {
+    "en": "Did it happen during exertion?",
+    "ar": "هل حدث أثناء المجهود؟"
+   },
+   "complaints": [
+    "syncope"
+   ],
+   "priority": 92,
+   "role": "assoc",
+   "noun": "syncope during exertion",
+   "redFlag": true
+  },
+  {
+   "id": "syncope.palpitations_before",
+   "fact": "hx.syncope.palpitations_before",
+   "type": "yesno",
+   "prompt": {
+    "en": "Palpitations just before it?",
+    "ar": "هل كان هناك خفقان قبلها مباشرة؟"
+   },
+   "complaints": [
+    "syncope"
+   ],
+   "priority": 88,
+   "role": "assoc",
+   "noun": "palpitations before the event",
+   "redFlag": true
+  },
+  {
+   "id": "syncope.family_sudden_death",
+   "fact": "hx.syncope.family_sudden_death",
+   "type": "yesno",
+   "prompt": {
+    "en": "Family history of sudden death under 50?",
+    "ar": "تاريخ عائلي لوفاة مفاجئة قبل سن 50؟"
+   },
+   "complaints": [
+    "syncope"
+   ],
+   "priority": 70,
+   "role": "pmh",
+   "noun": "family history of sudden death under 50"
+  },
+  {
+   "id": "pmh.heart_disease",
+   "fact": "pmh.heart_disease",
+   "type": "yesno",
+   "prompt": {
+    "en": "Known heart disease?",
+    "ar": "هل لديه مرض قلبي معروف؟"
+   },
+   "complaints": [
+    "syncope",
+    "palpitations",
+    "chest_pain",
+    "dyspnea"
+   ],
+   "priority": 66,
+   "role": "pmh",
+   "noun": "known heart disease"
+  },
+  {
+   "id": "palpitations.duration",
+   "fact": "hx.palpitations.duration",
+   "type": "duration",
+   "prompt": {
+    "en": "How long has it been present?",
+    "ar": "منذ متى بدأت الأعراض؟"
+   },
+   "complaints": [
+    "palpitations"
+   ],
+   "priority": 75,
+   "role": "duration",
+   "presets": [
+    {
+     "n": 30,
+     "unit": "min"
+    },
+    {
+     "n": 1,
+     "unit": "hour"
+    },
+    {
+     "n": 3,
+     "unit": "hour"
+    },
+    {
+     "n": 1,
+     "unit": "day"
+    },
+    {
+     "n": 1,
+     "unit": "week"
+    }
+   ]
+  },
+  {
+   "id": "palpitations.pattern",
+   "fact": "hx.palpitations.pattern",
+   "type": "choice",
+   "prompt": {
+    "en": "What is the rhythm like?",
+    "ar": "كيف يشعر بالنبض؟"
+   },
+   "complaints": [
+    "palpitations"
+   ],
+   "priority": 80,
+   "role": "character",
+   "options": [
+    {
+     "v": "regular_fast",
+     "en": "Regular and fast",
+     "ar": "منتظم وسريع",
+     "doc": "regular and fast"
+    },
+    {
+     "v": "irregular",
+     "en": "Irregular",
+     "ar": "غير منتظم",
+     "doc": "irregular"
+    },
+    {
+     "v": "skipped",
+     "en": "Skipped beats",
+     "ar": "نبضات متخطاة",
+     "doc": "with skipped beats"
+    }
+   ]
+  },
+  {
+   "id": "palpitations.chest_pain",
+   "fact": "sx.chest_pain_assoc",
+   "type": "yesno",
+   "prompt": {
+    "en": "Chest pain with it?",
+    "ar": "هل يوجد ألم صدر معها؟"
+   },
+   "complaints": [
+    "palpitations"
+   ],
+   "priority": 85,
+   "role": "assoc",
+   "noun": "chest pain",
+   "redFlag": true
+  },
+  {
+   "id": "fever.duration",
+   "fact": "hx.fever.duration",
+   "type": "duration",
+   "prompt": {
+    "en": "How long has it been present?",
+    "ar": "منذ متى بدأت الأعراض؟"
+   },
+   "complaints": [
+    "fever"
+   ],
+   "priority": 75,
+   "role": "duration",
+   "presets": [
+    {
+     "n": 30,
+     "unit": "min"
+    },
+    {
+     "n": 1,
+     "unit": "hour"
+    },
+    {
+     "n": 3,
+     "unit": "hour"
+    },
+    {
+     "n": 1,
+     "unit": "day"
+    },
+    {
+     "n": 1,
+     "unit": "week"
+    }
+   ]
+  },
+  {
+   "id": "fever.rigors",
+   "fact": "sx.rigors",
+   "type": "yesno",
+   "prompt": {
+    "en": "Shaking chills (rigors)?",
+    "ar": "هل توجد رعشة وقشعريرة؟"
+   },
+   "complaints": [
+    "fever"
+   ],
+   "priority": 60,
+   "role": "assoc",
+   "noun": "rigors"
+  },
+  {
+   "id": "fever.immunosuppressed",
+   "fact": "pmh.immunosuppressed",
+   "type": "yesno",
+   "prompt": {
+    "en": "Immunosuppressed (chemotherapy, steroids, transplant, HIV)?",
+    "ar": "ضعف مناعة (علاج كيماوي، كورتيزون، زراعة، HIV)؟"
+   },
+   "complaints": [
+    "fever"
+   ],
+   "priority": 86,
+   "role": "pmh",
+   "noun": "immunosuppression",
+   "redFlag": true
+  },
+  {
+   "id": "fever.neck_stiffness",
+   "fact": "sx.neck_stiffness",
+   "type": "yesno",
+   "prompt": {
+    "en": "Neck stiffness?",
+    "ar": "هل يوجد تيبس في الرقبة؟"
+   },
+   "complaints": [
+    "fever"
+   ],
+   "priority": 84,
+   "role": "assoc",
+   "noun": "neck stiffness",
+   "redFlag": true
+  },
+  {
+   "id": "vomiting.duration",
+   "fact": "hx.vomiting.duration",
+   "type": "duration",
+   "prompt": {
+    "en": "How long has it been present?",
+    "ar": "منذ متى بدأت الأعراض؟"
+   },
+   "complaints": [
+    "vomiting"
+   ],
+   "priority": 75,
+   "role": "duration",
+   "presets": [
+    {
+     "n": 30,
+     "unit": "min"
+    },
+    {
+     "n": 1,
+     "unit": "hour"
+    },
+    {
+     "n": 3,
+     "unit": "hour"
+    },
+    {
+     "n": 1,
+     "unit": "day"
+    },
+    {
+     "n": 1,
+     "unit": "week"
+    }
+   ]
+  },
+  {
+   "id": "vomiting.blood",
+   "fact": "sx.vomiting_blood",
+   "type": "yesno",
+   "prompt": {
+    "en": "Blood in the vomit?",
+    "ar": "هل يوجد دم في القيء؟"
+   },
+   "complaints": [
+    "vomiting"
+   ],
+   "priority": 90,
+   "role": "assoc",
+   "noun": "blood in the vomit",
+   "redFlag": true
+  },
+  {
+   "id": "vomiting.bilious",
+   "fact": "sx.vomiting_bilious",
+   "type": "yesno",
+   "prompt": {
+    "en": "Green (bilious) vomit?",
+    "ar": "هل القيء أخضر (صفراوي)؟"
+   },
+   "complaints": [
+    "vomiting"
+   ],
+   "priority": 82,
+   "role": "assoc",
+   "noun": "bilious vomiting",
+   "redFlag": true
+  },
+  {
+   "id": "vomiting.abdominal_pain",
+   "fact": "sx.abdominal_pain_assoc",
+   "type": "yesno",
+   "prompt": {
+    "en": "Abdominal pain with it?",
+    "ar": "هل يوجد ألم بطن؟"
+   },
+   "complaints": [
+    "vomiting"
+   ],
+   "priority": 70,
+   "role": "assoc",
+   "noun": "abdominal pain"
+  },
+  {
+   "id": "ams.onset",
+   "fact": "hx.altered_mental_status.onset",
+   "type": "choice",
+   "prompt": {
+    "en": "How did it start?",
+    "ar": "كيف بدأ التغير؟"
+   },
+   "complaints": [
+    "altered_mental_status"
+   ],
+   "priority": 80,
+   "role": "onset",
+   "options": [
+    {
+     "v": "sudden",
+     "en": "Sudden",
+     "ar": "مفاجئ",
+     "doc": "of sudden onset"
+    },
+    {
+     "v": "gradual",
+     "en": "Gradual",
+     "ar": "تدريجي",
+     "doc": "of gradual onset"
+    }
+   ]
+  },
+  {
+   "id": "ams.trauma",
+   "fact": "hx.altered_mental_status.head_injury",
+   "type": "yesno",
+   "prompt": {
+    "en": "Recent head injury or fall?",
+    "ar": "هل حدثت إصابة بالرأس أو سقوط؟"
+   },
+   "complaints": [
+    "altered_mental_status"
+   ],
+   "priority": 92,
+   "role": "assoc",
+   "noun": "recent head injury or fall",
+   "redFlag": true
+  },
+  {
+   "id": "ams.substances",
+   "fact": "hx.altered_mental_status.substances",
+   "type": "yesno",
+   "prompt": {
+    "en": "Possible drug, alcohol or overdose exposure?",
+    "ar": "احتمال تعاطي مخدرات أو كحول أو جرعة زائدة؟"
+   },
+   "complaints": [
+    "altered_mental_status"
+   ],
+   "priority": 85,
+   "role": "assoc",
+   "noun": "possible drug, alcohol or overdose exposure",
+   "redFlag": true
+  },
+  {
+   "id": "back_pain.duration",
+   "fact": "hx.back_pain.duration",
+   "type": "duration",
+   "prompt": {
+    "en": "How long has it been present?",
+    "ar": "منذ متى بدأت الأعراض؟"
+   },
+   "complaints": [
+    "back_pain"
+   ],
+   "priority": 75,
+   "role": "duration",
+   "presets": [
+    {
+     "n": 30,
+     "unit": "min"
+    },
+    {
+     "n": 1,
+     "unit": "hour"
+    },
+    {
+     "n": 3,
+     "unit": "hour"
+    },
+    {
+     "n": 1,
+     "unit": "day"
+    },
+    {
+     "n": 1,
+     "unit": "week"
+    }
+   ]
+  },
+  {
+   "id": "back_pain.leg_weakness",
+   "fact": "sx.leg_weakness_numbness",
+   "type": "yesno",
+   "prompt": {
+    "en": "Leg weakness or numbness?",
+    "ar": "ضعف أو تنميل في الساقين؟"
+   },
+   "complaints": [
+    "back_pain"
+   ],
+   "priority": 92,
+   "role": "assoc",
+   "noun": "leg weakness or numbness",
+   "redFlag": true
+  },
+  {
+   "id": "back_pain.bladder_bowel",
+   "fact": "sx.bladder_bowel",
+   "type": "yesno",
+   "prompt": {
+    "en": "Urinary retention, incontinence or numb groin?",
+    "ar": "احتباس بول أو سلس أو تنميل في المنطقة بين الفخذين؟"
+   },
+   "complaints": [
+    "back_pain"
+   ],
+   "priority": 93,
+   "role": "assoc",
+   "noun": "urinary or bowel disturbance, or saddle numbness",
+   "redFlag": true
+  },
+  {
+   "id": "back_pain.cancer_history",
+   "fact": "pmh.cancer",
+   "type": "yesno",
+   "prompt": {
+    "en": "History of cancer?",
+    "ar": "هل لديه تاريخ سرطان؟"
+   },
+   "complaints": [
+    "back_pain"
+   ],
+   "priority": 78,
+   "role": "pmh",
+   "noun": "history of cancer"
   }
  ],
  "exam": [
@@ -1230,5 +1834,1012 @@
     }
    ]
   }
- ]
+ ],
+ "sources": {
+  "cp2021": {
+   "citation": "Gulati M, et al. 2021 AHA/ACC/ASE/CHEST/SAEM/SCCT/SCMR Guideline for the Evaluation and Diagnosis of Chest Pain. J Cardiovasc Comput Tomogr 2021;16(1):54-122.",
+   "doi": "10.1016/j.jcct.2021.11.009",
+   "pmid": "34955448",
+   "year": 2021,
+   "latestKnown": "Latest version verified in this build: 2021."
+  },
+  "acs2025": {
+   "citation": "Rao SV, et al. 2025 ACC/AHA/ACEP/NAEMSP/SCAI Guideline for the Management of Patients With Acute Coronary Syndromes. Circulation 2025;151(13):e771-e862.",
+   "doi": "10.1161/CIR.0000000000001309",
+   "pmid": "40014670",
+   "year": 2025,
+   "latestKnown": "Latest version verified in this build: 2025."
+  },
+  "aorta2022": {
+   "citation": "Isselbacher EM, et al. 2022 ACC/AHA Guideline for the Diagnosis and Management of Aortic Disease. J Am Coll Cardiol 2022;80(24):e223-e393.",
+   "doi": "10.1016/j.jacc.2022.08.004",
+   "pmid": "36334952",
+   "year": 2022,
+   "latestKnown": "Latest version verified in this build: 2022."
+  },
+  "pe2019": {
+   "citation": "Konstantinides SV, et al. 2019 ESC Guidelines for the diagnosis and management of acute pulmonary embolism. Eur Heart J 2020;41(4):543-603.",
+   "doi": "10.1093/eurheartj/ehz405",
+   "pmid": "31504429",
+   "year": 2019,
+   "latestKnown": "Latest version verified in this build: 2019. A newer ESC edition may exist; check before release."
+  },
+  "syncope2017": {
+   "citation": "Shen WK, et al. 2017 ACC/AHA/HRS Guideline for the Evaluation and Management of Patients With Syncope. Circulation 2017;136(5):e60-e122.",
+   "doi": "10.1161/CIR.0000000000000499",
+   "pmid": "28280231",
+   "year": 2017,
+   "latestKnown": "Latest version verified in this build: 2017. A newer edition may exist; check before release."
+  },
+  "heart2008": {
+   "citation": "Six AJ, Backus BE, Kelder JC. Chest pain in the emergency room: value of the HEART score. Neth Heart J 2008;16(6):191-196.",
+   "doi": "10.1007/BF03086144",
+   "pmid": "18665203",
+   "year": 2008,
+   "latestKnown": "Original derivation paper."
+  },
+  "csrs2016": {
+   "citation": "Thiruganasambandamoorthy V, et al. Development of the Canadian Syncope Risk Score to predict serious adverse events after emergency department assessment of syncope. CMAJ 2016;188(12):E289-E298.",
+   "doi": "10.1503/cmaj.151469",
+   "pmid": "27378464",
+   "year": 2016,
+   "latestKnown": "Original derivation paper."
+  },
+  "wells2000": {
+   "citation": "Wells PS, et al. Derivation of a simple clinical model to categorize patients probability of pulmonary embolism. Thromb Haemost 2000;83(3):416-420.",
+   "pmid": "10744147",
+   "year": 2000,
+   "latestKnown": "Original derivation paper."
+  },
+  "perc2004": {
+   "citation": "Kline JA, et al. Clinical criteria to prevent unnecessary diagnostic testing in emergency department patients with suspected pulmonary embolism. J Thromb Haemost 2004;2(8):1247-1255.",
+   "doi": "10.1111/j.1538-7836.2004.00790.x",
+   "pmid": "15304025",
+   "year": 2004,
+   "latestKnown": "Original derivation paper."
+  }
+ },
+ "reasoning": {
+  "status": "DRAFT — rules are decision support only and pending consultant review. Items with no source are flagged needsSource in REVIEW.md. No drug doses.",
+  "rules": [
+   {
+    "id": "r_chest_pain",
+    "when": {
+     "fact": "complaint.chest_pain",
+     "eq": true
+    },
+    "specialties": [
+     "Emergency Medicine",
+     "Cardiology"
+    ],
+    "mustNotMiss": [
+     {
+      "id": "acs",
+      "dx": {
+       "en": "Acute coronary syndrome",
+       "ar": "متلازمة الشريان التاجي الحادة"
+      },
+      "why": "Time-critical; a normal first ECG does not exclude it.",
+      "sources": [
+       "cp2021",
+       "acs2025"
+      ]
+     },
+     {
+      "id": "pe",
+      "dx": {
+       "en": "Pulmonary embolism",
+       "ar": "انسداد رئوي"
+      },
+      "why": "Can present with chest pain, dyspnoea or syncope; consider early and risk-stratify.",
+      "sources": [
+       "pe2019"
+      ]
+     },
+     {
+      "id": "aortic_dissection",
+      "dx": {
+       "en": "Acute aortic syndrome",
+       "ar": "متلازمة الأبهر الحادة"
+      },
+      "why": "Missed diagnosis is rapidly fatal; consider with tearing pain, pulse or BP differences, or neurological deficit.",
+      "sources": [
+       "cp2021",
+       "aorta2022"
+      ]
+     },
+     {
+      "id": "pneumothorax",
+      "dx": {
+       "en": "Pneumothorax",
+       "ar": "استرواح الصدر"
+      },
+      "why": "Causes pleuritic pain and dyspnoea; tension physiology is an emergency.",
+      "sources": [
+       "cp2021"
+      ]
+     }
+    ],
+    "scores": [
+     {
+      "name": "HEART score",
+      "why": "Acute chest pain: structured risk stratification for major cardiac events.",
+      "source": "heart2008",
+      "adultOnly": true
+     }
+    ],
+    "sources": [
+     "cp2021"
+    ]
+   },
+   {
+    "id": "r_chest_dyspnea",
+    "when": {
+     "all": [
+      {
+       "fact": "complaint.chest_pain",
+       "eq": true
+      },
+      {
+       "fact": "complaint.dyspnea",
+       "eq": true
+      }
+     ]
+    },
+    "cluster": {
+     "en": "Cardiopulmonary pathway",
+     "ar": "المسار القلبي الرئوي"
+    },
+    "specialties": [
+     "Cardiology",
+     "Pulmonology"
+    ],
+    "mustNotMiss": [
+     {
+      "id": "heart_failure",
+      "dx": {
+       "en": "Acute heart failure",
+       "ar": "فشل قلبي حاد"
+      },
+      "why": "Dyspnoea with chest pain may reflect ischaemia with pulmonary oedema.",
+      "sources": [
+       "acs2025"
+      ]
+     }
+    ],
+    "scores": [
+     {
+      "name": "Wells score for PE",
+      "why": "Pre-test probability when PE is being considered.",
+      "source": "wells2000",
+      "adultOnly": true
+     },
+     {
+      "name": "PERC rule",
+      "why": "Only for low-probability patients: may avoid further PE testing.",
+      "source": "perc2004",
+      "adultOnly": true
+     }
+    ],
+    "sources": [
+     "pe2019"
+    ]
+   },
+   {
+    "id": "r_chest_gi",
+    "when": {
+     "all": [
+      {
+       "fact": "complaint.chest_pain",
+       "eq": true
+      },
+      {
+       "any": [
+        {
+         "fact": "complaint.vomiting",
+         "eq": true
+        },
+        {
+         "fact": "complaint.abdominal_pain",
+         "eq": true
+        }
+       ]
+      }
+     ]
+    },
+    "cluster": {
+     "en": "Cardiac / gastrointestinal overlap",
+     "ar": "تداخل قلبي / هضمي"
+    },
+    "specialties": [
+     "Gastroenterology",
+     "General Surgery"
+    ],
+    "mustNotMiss": [
+     {
+      "id": "upper_gi_surgical",
+      "dx": {
+       "en": "Perforation / pancreatitis / oesophageal rupture",
+       "ar": "ثقب / التهاب بنكرياس / تمزق مريء"
+      },
+      "why": "Epigastric pain with vomiting can be surgical; ACS can also present with epigastric pain and vomiting.",
+      "sources": []
+     }
+    ],
+    "scores": [],
+    "sources": [
+     "cp2021"
+    ]
+   },
+   {
+    "id": "r_syncope",
+    "when": {
+     "fact": "complaint.syncope",
+     "eq": true
+    },
+    "specialties": [
+     "Emergency Medicine",
+     "Cardiology"
+    ],
+    "mustNotMiss": [
+     {
+      "id": "arrhythmia",
+      "dx": {
+       "en": "Serious arrhythmia",
+       "ar": "اضطراب نظم خطير"
+      },
+      "why": "Brady- or tachyarrhythmia can cause syncope or palpitations with sudden deterioration.",
+      "sources": [
+       "syncope2017"
+      ]
+     },
+     {
+      "id": "acs",
+      "dx": {
+       "en": "Acute coronary syndrome",
+       "ar": "متلازمة الشريان التاجي الحادة"
+      },
+      "why": "Time-critical; a normal first ECG does not exclude it.",
+      "sources": [
+       "cp2021",
+       "acs2025"
+      ]
+     },
+     {
+      "id": "pe",
+      "dx": {
+       "en": "Pulmonary embolism",
+       "ar": "انسداد رئوي"
+      },
+      "why": "Can present with chest pain, dyspnoea or syncope; consider early and risk-stratify.",
+      "sources": [
+       "pe2019"
+      ]
+     },
+     {
+      "id": "haemorrhage",
+      "dx": {
+       "en": "Occult haemorrhage",
+       "ar": "نزف خفي"
+      },
+      "why": "Syncope with anaemia, melaena, or abdominal/pelvic pain suggests bleeding.",
+      "sources": []
+     }
+    ],
+    "scores": [
+     {
+      "name": "Canadian Syncope Risk Score",
+      "why": "Syncope: 30-day serious adverse event risk after ED assessment.",
+      "source": "csrs2016",
+      "adultOnly": true
+     }
+    ],
+    "sources": [
+     "syncope2017"
+    ]
+   },
+   {
+    "id": "r_syncope_highrisk",
+    "when": {
+     "any": [
+      {
+       "fact": "hx.syncope.exertional",
+       "eq": true
+      },
+      {
+       "fact": "hx.syncope.palpitations_before",
+       "eq": true
+      },
+      {
+       "fact": "hx.syncope.family_sudden_death",
+       "eq": true
+      }
+     ]
+    },
+    "cluster": {
+     "en": "High-risk syncope features",
+     "ar": "علامات إغماء عالية الخطورة"
+    },
+    "specialties": [
+     "Cardiology"
+    ],
+    "mustNotMiss": [
+     {
+      "id": "structural_cardiac",
+      "dx": {
+       "en": "Structural / inherited cardiac cause",
+       "ar": "سبب قلبي بنيوي / وراثي"
+      },
+      "why": "Exertional syncope, preceding palpitations or family sudden death raise concern for a cardiac cause.",
+      "sources": [
+       "syncope2017"
+      ]
+     }
+    ],
+    "scores": [],
+    "sources": [
+     "syncope2017"
+    ]
+   },
+   {
+    "id": "r_palpitations",
+    "when": {
+     "fact": "complaint.palpitations",
+     "eq": true
+    },
+    "specialties": [
+     "Emergency Medicine",
+     "Cardiology"
+    ],
+    "mustNotMiss": [
+     {
+      "id": "arrhythmia",
+      "dx": {
+       "en": "Serious arrhythmia",
+       "ar": "اضطراب نظم خطير"
+      },
+      "why": "Brady- or tachyarrhythmia can cause syncope or palpitations with sudden deterioration.",
+      "sources": [
+       "syncope2017"
+      ]
+     },
+     {
+      "id": "metabolic_palp",
+      "dx": {
+       "en": "Electrolyte / thyroid / anaemia cause",
+       "ar": "سبب أملاح / غدة درقية / أنيميا"
+      },
+      "why": "Treatable triggers that change management.",
+      "sources": []
+     }
+    ],
+    "scores": [],
+    "sources": []
+   },
+   {
+    "id": "r_palp_red",
+    "when": {
+     "all": [
+      {
+       "fact": "complaint.palpitations",
+       "eq": true
+      },
+      {
+       "any": [
+        {
+         "fact": "complaint.syncope",
+         "eq": true
+        },
+        {
+         "fact": "complaint.chest_pain",
+         "eq": true
+        },
+        {
+         "fact": "complaint.dyspnea",
+         "eq": true
+        }
+       ]
+      }
+     ]
+    },
+    "cluster": {
+     "en": "Palpitations with haemodynamic or ischaemic symptoms",
+     "ar": "خفقان مع أعراض خطيرة"
+    },
+    "specialties": [
+     "Critical Care"
+    ],
+    "mustNotMiss": [
+     {
+      "id": "unstable_arrhythmia",
+      "dx": {
+       "en": "Unstable arrhythmia",
+       "ar": "اضطراب نظم غير مستقر"
+      },
+      "why": "Palpitations with syncope, chest pain or dyspnoea warrants immediate rhythm assessment.",
+      "sources": []
+     }
+    ],
+    "scores": [],
+    "sources": []
+   },
+   {
+    "id": "r_dyspnea",
+    "when": {
+     "fact": "complaint.dyspnea",
+     "eq": true
+    },
+    "specialties": [
+     "Emergency Medicine",
+     "Pulmonology",
+     "Cardiology"
+    ],
+    "mustNotMiss": [
+     {
+      "id": "pe",
+      "dx": {
+       "en": "Pulmonary embolism",
+       "ar": "انسداد رئوي"
+      },
+      "why": "Can present with chest pain, dyspnoea or syncope; consider early and risk-stratify.",
+      "sources": [
+       "pe2019"
+      ]
+     },
+     {
+      "id": "acs",
+      "dx": {
+       "en": "Acute coronary syndrome",
+       "ar": "متلازمة الشريان التاجي الحادة"
+      },
+      "why": "Time-critical; a normal first ECG does not exclude it.",
+      "sources": [
+       "cp2021",
+       "acs2025"
+      ]
+     },
+     {
+      "id": "pneumothorax",
+      "dx": {
+       "en": "Pneumothorax",
+       "ar": "استرواح الصدر"
+      },
+      "why": "Causes pleuritic pain and dyspnoea; tension physiology is an emergency.",
+      "sources": [
+       "cp2021"
+      ]
+     },
+     {
+      "id": "anaphylaxis",
+      "dx": {
+       "en": "Anaphylaxis / airway compromise",
+       "ar": "تأق / انسداد مجرى الهواء"
+      },
+      "why": "Rapidly progressive; look for exposure, urticaria, stridor.",
+      "sources": []
+     }
+    ],
+    "scores": [],
+    "sources": [
+     "pe2019"
+    ]
+   },
+   {
+    "id": "r_abdo",
+    "when": {
+     "fact": "complaint.abdominal_pain",
+     "eq": true
+    },
+    "specialties": [
+     "Emergency Medicine",
+     "General Surgery",
+     "Gastroenterology"
+    ],
+    "mustNotMiss": [
+     {
+      "id": "surgical_abdomen",
+      "dx": {
+       "en": "Perforation / obstruction / mesenteric ischaemia",
+       "ar": "ثقب / انسداد / نقص تروية المساريق"
+      },
+      "why": "Surgical emergencies can be subtle early, especially in older patients.",
+      "sources": []
+     }
+    ],
+    "scores": [],
+    "sources": []
+   },
+   {
+    "id": "r_abdo_aaa",
+    "when": {
+     "all": [
+      {
+       "fact": "complaint.abdominal_pain",
+       "eq": true
+      },
+      {
+       "fact": "patient.age",
+       "gte": 50
+      }
+     ]
+    },
+    "specialties": [
+     "Vascular Surgery"
+    ],
+    "mustNotMiss": [
+     {
+      "id": "aaa",
+      "dx": {
+       "en": "Abdominal aortic aneurysm (rupture)",
+       "ar": "تمدد الأبهر البطني (تمزق)"
+      },
+      "why": "Abdominal, back or flank pain with hypotension or syncope in older patients.",
+      "sources": [
+       "aorta2022"
+      ]
+     }
+    ],
+    "scores": [],
+    "sources": [
+     "aorta2022"
+    ]
+   },
+   {
+    "id": "r_fem_ectopic",
+    "when": {
+     "all": [
+      {
+       "all": [
+        {
+         "fact": "patient.sex",
+         "eq": "female"
+        },
+        {
+         "fact": "patient.age",
+         "gte": 12
+        },
+        {
+         "fact": "patient.age",
+         "lte": 55
+        }
+       ]
+      },
+      {
+       "any": [
+        {
+         "fact": "complaint.abdominal_pain",
+         "eq": true
+        },
+        {
+         "fact": "complaint.syncope",
+         "eq": true
+        },
+        {
+         "fact": "complaint.vomiting",
+         "eq": true
+        }
+       ]
+      }
+     ]
+    },
+    "specialties": [
+     "Obstetrics & Gynecology"
+    ],
+    "mustNotMiss": [
+     {
+      "id": "ectopic",
+      "dx": {
+       "en": "Ectopic pregnancy",
+       "ar": "حمل خارج الرحم"
+      },
+      "why": "Any woman of child-bearing age with abdominal pain, syncope or vomiting needs pregnancy status.",
+      "sources": []
+     }
+    ],
+    "scores": [],
+    "sources": []
+   },
+   {
+    "id": "r_headache",
+    "when": {
+     "fact": "complaint.headache",
+     "eq": true
+    },
+    "specialties": [
+     "Emergency Medicine",
+     "Neurology"
+    ],
+    "mustNotMiss": [
+     {
+      "id": "sah",
+      "dx": {
+       "en": "Subarachnoid haemorrhage",
+       "ar": "نزف تحت العنكبوتية"
+      },
+      "why": "Sudden severe headache is a red flag until excluded.",
+      "sources": []
+     },
+     {
+      "id": "meningitis",
+      "dx": {
+       "en": "Meningitis / encephalitis",
+       "ar": "التهاب السحايا / الدماغ"
+      },
+      "why": "Headache with fever or neck stiffness.",
+      "sources": []
+     },
+     {
+      "id": "stroke_ich",
+      "dx": {
+       "en": "Stroke / intracranial haemorrhage",
+       "ar": "سكتة / نزف دماغي"
+      },
+      "why": "Focal deficit or reduced consciousness.",
+      "sources": []
+     }
+    ],
+    "scores": [],
+    "sources": []
+   },
+   {
+    "id": "r_headache_flags",
+    "when": {
+     "any": [
+      {
+       "fact": "sx.neck_stiffness",
+       "eq": true
+      },
+      {
+       "fact": "sx.focal_weakness",
+       "eq": true
+      }
+     ]
+    },
+    "cluster": {
+     "en": "Neurological red flag",
+     "ar": "علامة خطر عصبية"
+    },
+    "specialties": [
+     "Neurology",
+     "Critical Care"
+    ],
+    "mustNotMiss": [
+     {
+      "id": "cns_emergency",
+      "dx": {
+       "en": "CNS infection / haemorrhage / stroke",
+       "ar": "عدوى أو نزف أو سكتة دماغية"
+      },
+      "why": "Neck stiffness or focal weakness changes urgency.",
+      "sources": []
+     }
+    ],
+    "scores": [],
+    "sources": []
+   },
+   {
+    "id": "r_fever",
+    "when": {
+     "fact": "complaint.fever",
+     "eq": true
+    },
+    "specialties": [
+     "Emergency Medicine",
+     "Infectious Diseases"
+    ],
+    "mustNotMiss": [
+     {
+      "id": "sepsis",
+      "dx": {
+       "en": "Sepsis",
+       "ar": "إنتان"
+      },
+      "why": "Fever with abnormal vital signs, altered mentation or hypotension.",
+      "sources": []
+     },
+     {
+      "id": "meningitis",
+      "dx": {
+       "en": "Meningitis / encephalitis",
+       "ar": "التهاب السحايا / الدماغ"
+      },
+      "why": "Fever with headache, neck stiffness or altered mentation.",
+      "sources": []
+     }
+    ],
+    "scores": [],
+    "sources": []
+   },
+   {
+    "id": "r_fever_immuno",
+    "when": {
+     "all": [
+      {
+       "fact": "complaint.fever",
+       "eq": true
+      },
+      {
+       "fact": "pmh.immunosuppressed",
+       "eq": true
+      }
+     ]
+    },
+    "cluster": {
+     "en": "Fever in an immunosuppressed patient",
+     "ar": "حمى مع ضعف مناعة"
+    },
+    "specialties": [
+     "Infectious Diseases",
+     "Oncology / Hematology"
+    ],
+    "mustNotMiss": [
+     {
+      "id": "immuno_infection",
+      "dx": {
+       "en": "Serious infection with atypical presentation",
+       "ar": "عدوى خطيرة بعرض غير نمطي"
+      },
+      "why": "Signs can be blunted; lower threshold to escalate.",
+      "sources": []
+     }
+    ],
+    "scores": [],
+    "sources": []
+   },
+   {
+    "id": "r_vomiting",
+    "when": {
+     "fact": "complaint.vomiting",
+     "eq": true
+    },
+    "specialties": [
+     "Emergency Medicine",
+     "Gastroenterology"
+    ],
+    "mustNotMiss": [
+     {
+      "id": "metabolic_dka",
+      "dx": {
+       "en": "Diabetic ketoacidosis / metabolic cause",
+       "ar": "حماض كيتوني / سبب أيضي"
+      },
+      "why": "Vomiting in diabetes should prompt glucose and ketone assessment.",
+      "sources": []
+     },
+     {
+      "id": "obstruction",
+      "dx": {
+       "en": "Bowel obstruction",
+       "ar": "انسداد معوي"
+      },
+      "why": "Particularly with bilious vomiting or abdominal distension.",
+      "sources": []
+     }
+    ],
+    "scores": [],
+    "sources": []
+   },
+   {
+    "id": "r_vomit_blood",
+    "when": {
+     "fact": "sx.vomiting_blood",
+     "eq": true
+    },
+    "cluster": {
+     "en": "Possible upper GI bleeding",
+     "ar": "احتمال نزف هضمي علوي"
+    },
+    "specialties": [
+     "Gastroenterology",
+     "Critical Care"
+    ],
+    "mustNotMiss": [
+     {
+      "id": "ugib",
+      "dx": {
+       "en": "Upper gastrointestinal bleeding",
+       "ar": "نزف الجهاز الهضمي العلوي"
+      },
+      "why": "Haematemesis needs urgent haemodynamic assessment.",
+      "sources": []
+     }
+    ],
+    "scores": [],
+    "sources": []
+   },
+   {
+    "id": "r_ams",
+    "when": {
+     "fact": "complaint.altered_mental_status",
+     "eq": true
+    },
+    "specialties": [
+     "Emergency Medicine",
+     "Neurology",
+     "Critical Care"
+    ],
+    "mustNotMiss": [
+     {
+      "id": "hypoglycaemia",
+      "dx": {
+       "en": "Hypoglycaemia",
+       "ar": "هبوط السكر"
+      },
+      "why": "Check capillary glucose immediately; rapidly reversible.",
+      "sources": []
+     },
+     {
+      "id": "cns_emergency",
+      "dx": {
+       "en": "CNS infection / haemorrhage / stroke",
+       "ar": "عدوى أو نزف أو سكتة دماغية"
+      },
+      "why": "Altered consciousness may be the only sign.",
+      "sources": []
+     },
+     {
+      "id": "toxic_metabolic",
+      "dx": {
+       "en": "Toxic / metabolic encephalopathy",
+       "ar": "اعتلال دماغي سمي / أيضي"
+      },
+      "why": "Overdose, electrolyte, hypoxia, hepatic or uraemic causes.",
+      "sources": []
+     },
+     {
+      "id": "sepsis",
+      "dx": {
+       "en": "Sepsis",
+       "ar": "إنتان"
+      },
+      "why": "Altered mentation can be the first sign in older patients.",
+      "sources": []
+     }
+    ],
+    "scores": [
+     {
+      "name": "Glasgow Coma Scale",
+      "why": "Altered consciousness: calculated automatically from the vitals tab.",
+      "source": null,
+      "adultOnly": false
+     }
+    ],
+    "sources": []
+   },
+   {
+    "id": "r_ams_trauma",
+    "when": {
+     "fact": "hx.altered_mental_status.head_injury",
+     "eq": true
+    },
+    "cluster": {
+     "en": "Head injury with altered consciousness",
+     "ar": "إصابة رأس مع تغير الوعي"
+    },
+    "specialties": [
+     "Neurosurgery",
+     "Trauma Surgery"
+    ],
+    "mustNotMiss": [
+     {
+      "id": "intracranial_bleed",
+      "dx": {
+       "en": "Intracranial haemorrhage",
+       "ar": "نزف داخل الجمجمة"
+      },
+      "why": "Head injury with reduced consciousness.",
+      "sources": []
+     }
+    ],
+    "scores": [],
+    "sources": []
+   },
+   {
+    "id": "r_back",
+    "when": {
+     "fact": "complaint.back_pain",
+     "eq": true
+    },
+    "specialties": [
+     "Emergency Medicine",
+     "Orthopedics"
+    ],
+    "mustNotMiss": [
+     {
+      "id": "fracture_malignancy",
+      "dx": {
+       "en": "Vertebral fracture / malignancy / spinal infection",
+       "ar": "كسر فقري / ورم / عدوى فقرية"
+      },
+      "why": "Red flags: trauma, cancer history, fever, age, night pain.",
+      "sources": []
+     }
+    ],
+    "scores": [],
+    "sources": []
+   },
+   {
+    "id": "r_back_cauda",
+    "when": {
+     "any": [
+      {
+       "fact": "sx.leg_weakness_numbness",
+       "eq": true
+      },
+      {
+       "fact": "sx.bladder_bowel",
+       "eq": true
+      }
+     ]
+    },
+    "cluster": {
+     "en": "Possible cord / cauda equina compression",
+     "ar": "احتمال ضغط على الحبل الشوكي / ذنب الفرس"
+    },
+    "specialties": [
+     "Neurosurgery"
+    ],
+    "mustNotMiss": [
+     {
+      "id": "cauda_equina",
+      "dx": {
+       "en": "Cord / cauda equina compression",
+       "ar": "انضغاط الحبل الشوكي / ذنب الفرس"
+      },
+      "why": "Neurological deficit or sphincter disturbance is time-critical.",
+      "sources": []
+     }
+    ],
+    "scores": [],
+    "sources": []
+   },
+   {
+    "id": "r_back_aorta",
+    "when": {
+     "all": [
+      {
+       "fact": "complaint.back_pain",
+       "eq": true
+      },
+      {
+       "fact": "patient.age",
+       "gte": 50
+      }
+     ]
+    },
+    "specialties": [
+     "Vascular Surgery"
+    ],
+    "mustNotMiss": [
+     {
+      "id": "aortic_dissection",
+      "dx": {
+       "en": "Acute aortic syndrome",
+       "ar": "متلازمة الأبهر الحادة"
+      },
+      "why": "Missed diagnosis is rapidly fatal; consider with tearing pain, pulse or BP differences, or neurological deficit.",
+      "sources": [
+       "cp2021",
+       "aorta2022"
+      ]
+     },
+     {
+      "id": "aaa",
+      "dx": {
+       "en": "Abdominal aortic aneurysm (rupture)",
+       "ar": "تمدد الأبهر البطني (تمزق)"
+      },
+      "why": "Back pain with hypotension or syncope in older patients.",
+      "sources": [
+       "aorta2022"
+      ]
+     }
+    ],
+    "scores": [],
+    "sources": [
+     "aorta2022"
+    ]
+   }
+  ]
+ }
 }

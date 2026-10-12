@@ -140,6 +140,29 @@ def main():
         check(page.evaluate("window.__UFC.store.getFact('vitals.sbp')") == 120, 'reload restores the last case from local storage')
         check(page.evaluate("window.__UFC.store.state.status") == 'final', 'finalized status restored')
 
+        # ---- Phase 2: multiple complaints in ONE case, Think tab
+        page.goto(BASE); page.wait_for_selector('[data-act="new-case"]')
+        page.click('[data-act="new-case"]')
+        page.fill('#age', '55')
+        page.click('[data-act="sex"][data-v="male"]')
+        page.click('[data-act="intake-submit"]')
+        for k in ('chest_pain', 'dyspnea', 'syncope'):
+            page.click(f'[data-act="toggle-complaint"][data-key="{k}"]')
+        page.click('[data-act="start-interview"]')
+        check(page.evaluate("window.__UFC.store.activeComplaints().length") == 3, 'three complaints in one connected case')
+        check(len(page.query_selector_all('.q')) == 1, 'multi-complaint: still one question per screen')
+        page.click('[data-tab="think"]')
+        txt = page.inner_text('main')
+        check('Cardiopulmonary pathway' in txt, 'combined cardiopulmonary pathway shown')
+        check('Acute coronary syndrome' in txt and 'Pulmonary embolism' in txt, 'must-not-miss list shown')
+        check('AI SUGGESTION' in txt, 'suggestions are labelled as AI suggestions')
+        check(page.evaluate("document.documentElement.scrollWidth <= window.innerWidth"), 'no horizontal scroll (Think tab)')
+        page.click('[data-act="consider"][data-dx="pe"]')
+        page.click('[data-tab="note"]')
+        note = page.inner_text('main')
+        check('clinician-confirmed' in note and 'Pulmonary embolism' in note, 'accepted consideration appears in the note')
+        check('Acute coronary syndrome' not in note, 'unaccepted suggestions do not appear in the note')
+
         # ---- Arabic / RTL
         page.click('[data-act="lang"]')
         check(page.evaluate("document.documentElement.dir") == 'rtl', 'Arabic switches to RTL')

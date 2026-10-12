@@ -211,6 +211,10 @@ function assessmentSection(store) {
   const dx = store.getFact('assessment.diagnosis');
   if (imp) lines.push(`Clinical impression: ${imp}`);
   if (dx) lines.push(`Working diagnosis (clinician-entered): ${dx}`);
+  const considered = Object.values(store.state.facts)
+    .filter((f) => f.key.startsWith('dx.consider.') && f.status === 'active' && typeof f.value === 'string')
+    .map((f) => f.value);
+  if (considered.length) lines.push(`Diagnoses to exclude / under consideration (clinician-confirmed): ${joinList(considered)}.`);
   return lines;
 }
 

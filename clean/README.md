@@ -53,5 +53,15 @@ tools/        build.mjs
 3. The workflow runs tests, builds and publishes `dist/`.
 
 ## Decisions waiting for the consultant
-- Hypotension alert uses SBP below 90 mmHg and MAP below 65 mmHg (common adult thresholds). The master prompt's example of 90/60 is not flagged by "below 90". Confirm the local definition.
+- Hypotension alert: SBP 90 mmHg or below, or MAP below 65 mmHg (decision by the consultant: "90 or below"). The spec example 90/60 is therefore flagged.
 - Every clinical question and option wording in `pack.json` needs review before real use.
+
+
+## Phase 2 — multiple complaints (added)
+
+- 10 complaints (chest pain, dyspnoea, abdominal pain, headache, syncope, palpitations, fever, vomiting, confusion/altered mental status, back pain). Any combination stays ONE case; shared questions are asked once.
+- `src/core/reasoning.js` + `reasoning.rules` in `pack.json`: combined pathways (e.g. chest pain + dyspnoea), must-not-miss diagnoses with WHY, relevant scores (names only; calculators are Phase 3), likely specialties.
+- Output is labelled AI SUGGESTION. A diagnosis enters the note only when the clinician taps "Add to assessment" (stored as `ai_confirmed`).
+- Adult-validated scores are hidden for age < 18 or unknown age.
+- `npm run review` regenerates `REVIEW.md`, the consultant sign-off checklist. Rows marked NEEDS SOURCE have no verified citation yet.
+- Sources were verified in PubMed (title, year, DOI, PMID). UpToDate and the textbooks were not accessible; nothing is copied from them.

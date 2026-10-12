@@ -192,3 +192,14 @@ test('audit trail records who, what, when, previous and new value', () => {
   assert.equal(a.reason, 'Re-measured');
   assert.equal(typeof a.at, 'number');
 });
+
+test('hypotension threshold: SBP 90 is flagged, 91 is not (decision: "90 or below")', () => {
+  for (const [sbp, expected] of [[90, true], [91, false], [89, true]]) {
+    const s = makeStore();
+    s.setFact('patient.age', 55);
+    s.setFact('vitals.sbp', sbp);
+    s.setFact('vitals.dbp', 60);
+    const flagged = deriveAlerts(s.snapshotValues()).some((a) => a.id === 'hypotension');
+    assert.equal(flagged, expected, `SBP ${sbp}`);
+  }
+});

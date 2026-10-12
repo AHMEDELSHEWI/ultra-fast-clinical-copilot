@@ -1,5 +1,6 @@
 // UI shell. Vanilla JS, no framework. All clinical logic lives in ../core (tested without a browser).
 import pack from '../content/pack.json';
+import { reason, considerKey, citationFor } from '../core/reasoning.js';
 import { CaseStore, createCase } from '../core/state.js';
 import { Persistence, IndexedDbAdapter, MemoryAdapter, attachAutosave, APP_VERSION } from '../core/persistence.js';
 import { nextQuestion, progress, missingInformation, applicableQuestions } from '../core/questions.js';
@@ -28,7 +29,7 @@ let autosave = null;
 let unsub = null;
 
 const STOMACH = '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M26 6c0 8-8 8-8 18 0 14 6 18 14 18 8 0 12-5 16-5 5 0 8 4 8 10s-5 11-14 11c-14 0-30-8-30-26 0-10 6-14 6-20z" fill="#ffb4a2" stroke="#d9480f" stroke-width="3" stroke-linejoin="round"/></svg>';
-const ICONS = { heart: '🫀', lungs: '🫁', brain: '🧠', stomach: STOMACH, shield: '🛡️', syringe: '💉', pregnancy: '🤰' };
+const ICONS = { heart: '🫀', lungs: '🫁', brain: '🧠', stomach: STOMACH, shield: '🛡️', syringe: '💉', pregnancy: '🤰', syncope: '😵', thermometer: '🌡️', bone: '🦴' };
 const icon = (k) => ICONS[k] ?? '🩺';
 const complaintByKey = (k) => pack.complaints.find((c) => c.key === k);
 const examFindings = pack.exam.flatMap((s) => s.findings);
@@ -316,6 +317,34 @@ function timelineView() {
     <button class="btn block" data-act="copy" data-target="timeline" ${events.length ? '' : 'disabled'}>📄 ${esc(t('copy'))}</button></div></main>`;
 }
 
+
+function thinkView() {
+  if (store.activeComplaints().length === 0) return `<main><div class="stack"><p class="muted">${esc(t('thinkEmpty'))}</p></div></main>`;
+  const r = reason(pack, store);
+  const lang = ui.lang;
+  const srcHtml = (ids) => ids.length
+    ? `<small class="muted">${esc(t('sourcesT'))}: ${ids.map((id) => esc(citationFor(pack, id) ?? id)).join(' · ')}</small>`
+    : `<small class="muted">${esc(t('noSourceYet'))}</small>`;
+  const clusters = r.clusters.map((c) => `<div class="alert warn"><span>🧩</span><div><span class="t">${esc(c.label[lang] ?? c.label.en)}</span></div></div>`).join('');
+  const mnm = r.mustNotMiss.map((d) => {
+    const key = considerKey(d.id);
+    const on = store.getFact(key) !== undefined;
+    const action = isFinal() ? '' : on
+      ? `<button class="btn small" data-act="unconsider" data-dx="${esc(d.id)}">${esc(t('removeConsider'))}</button>`
+      : `<button class="btn small" data-act="consider" data-dx="${esc(d.id)}" data-label="${esc(d.dx.en)}">${esc(t('addConsider'))}</button>`;
+    return `<div class="alert ${on ? 'ok' : 'info'}"><span>${on ? '✅' : '🔎'}</span><div style="flex:1"><span class="t">${esc(d.dx[lang] ?? d.dx.en)}</span>
+      <details><summary>${esc(t('whyT'))}</summary><p>${esc(d.why)}</p>${srcHtml(d.sources)}</details>${on ? `<small>${esc(t('considered'))}</small>` : ''}</div>${action}</div>`;
+  }).join('');
+  const scores = r.scores.map((s) => `<div class="kv"><span><b>${esc(s.name)}</b><br><small class="muted">${esc(s.why)}${s.source ? ` · ${esc(pack.sources[s.source]?.citation ?? '')}` : ''}</small></span></div>`).join('');
+  return `<main><div class="stack"><h2>${esc(t('thinkTitle'))}</h2>
+    <p class="muted"><b>${esc(t('aiLabel'))}</b> · ${esc(t('reviewDraft'))}</p>
+    ${r.clusters.length ? `<h3>${esc(t('clusters'))}</h3>${clusters}` : ''}
+    <h3>${esc(t('mustNotMissT'))}</h3>${mnm}
+    ${r.scores.length ? `<h3>${esc(t('relevantScores'))}</h3>${scores}` : ''}
+    ${r.ageNote ? `<p class="muted">${esc(r.ageNote)}</p>` : ''}
+    <h3>${esc(t('specialtiesT'))}</h3><p>${r.specialties.map(esc).join(' · ')}</p></div></main>`;
+}
+
 function safetyView() {
   const alerts = deriveAlerts(store.snapshotValues());
   const missing = missingInformation(pack, store);
@@ -336,9 +365,9 @@ function safetyView() {
     ${isFinal() ? '' : `<button class="btn block" data-act="save-version">${esc(t('saveVersion'))}</button>`}</div></main>`;
 }
 
-const TABS = [['interview', '📋', 'tabInterview'], ['vitals', '🫀', 'tabVitals'], ['exam', '🩺', 'tabExam'], ['note', '📄', 'tabNote'], ['timeline', '🕒', 'tabTimeline'], ['safety', '🛡️', 'tabSafety']];
+const TABS = [['interview', '📋', 'tabInterview'], ['vitals', '🫀', 'tabVitals'], ['exam', '🩺', 'tabExam'], ['think', '🧠', 'tabThink'], ['note', '📄', 'tabNote'], ['timeline', '🕒', 'tabTimeline'], ['safety', '🛡️', 'tabSafety']];
 function caseView() {
-  const views = { interview: interviewView, vitals: vitalsView, exam: examView, note: noteView, timeline: timelineView, safety: safetyView };
+  const views = { interview: interviewView, vitals: vitalsView, exam: examView, think: thinkView, note: noteView, timeline: timelineView, safety: safetyView };
   const nav = `<nav class="nav" aria-label="Case sections"><div>${TABS.map(([k, ic, lk]) =>
     `<button class="${ui.tab === k ? 'on' : ''}" data-act="tab" data-tab="${k}" aria-current="${ui.tab === k}"><span class="ico">${ic}</span>${esc(t(lk))}</button>`).join('')}</div></nav>`;
   return views[ui.tab]() + nav;
@@ -570,6 +599,8 @@ const handlers = {
       if (cur === undefined) store.setFact('patient.sex', r.action, { origin: 'clinician', replace: true }); else if (cur !== r.action) store.correctFact('patient.sex', r.action, r.values.reason);
     }
   },
+  'consider': (d) => { store.setFact(considerKey(d.dx), d.label, { origin: 'ai_confirmed', reason: 'Added to assessment by clinician' }); render(); },
+  'unconsider': (d) => { store.removeFact(considerKey(d.dx), 'Removed by clinician'); render(); },
   'save-version': () => { store.saveVersion('updated'); toast(t('saveVersion')); render(); },
   'restore-version': async (d) => {
     const r = await ask({ title: t('restore'), actions: [{ id: 'ok', label: t('restore'), kind: 'primary' }, { id: 'cancel', label: t('cancel') }] });

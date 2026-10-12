@@ -25,8 +25,8 @@ export function deriveAlerts(values) {
   }
 
   const map = calcMap(sbp, dbp);
-  if (typeof sbp === 'number' && sbp < 90) {
-    out.push({ id: 'hypotension', level: 'danger', text: `Hypotension: SBP ${sbp} mmHg (below 90).`, basis: 'Commonly used adult threshold; confirm against local protocol.' });
+  if (typeof sbp === 'number' && sbp <= 90) {
+    out.push({ id: 'hypotension', level: 'danger', text: `Hypotension: SBP ${sbp} mmHg (90 or below).`, basis: 'Commonly used adult threshold; confirm against local protocol.' });
   }
   if (map !== null && map < 65) {
     out.push({ id: 'low-map', level: 'danger', text: `Low MAP: ${map} mmHg (below 65).`, basis: 'Commonly used adult threshold; confirm against local protocol.' });
