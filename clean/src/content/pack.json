@@ -4432,5 +4432,259 @@
     }
    ]
   }
- ]
+ ],
+ "icd10": {
+  "system": "WHO ICD-10. Check the coding system used by your institution (e.g. ICD-10-AM or ICD-10-CM) before submitting.",
+  "complaints": {
+   "chest_pain": [
+    "R07.4",
+    "Chest pain, unspecified"
+   ],
+   "dyspnea": [
+    "R06.0",
+    "Dyspnoea"
+   ],
+   "abdominal_pain": [
+    "R10.4",
+    "Other and unspecified abdominal pain"
+   ],
+   "headache": [
+    "R51",
+    "Headache"
+   ],
+   "syncope": [
+    "R55",
+    "Syncope and collapse"
+   ],
+   "palpitations": [
+    "R00.2",
+    "Palpitations"
+   ],
+   "fever": [
+    "R50.9",
+    "Fever, unspecified"
+   ],
+   "vomiting": [
+    "R11",
+    "Nausea and vomiting"
+   ],
+   "altered_mental_status": [
+    "R41.0",
+    "Disorientation, unspecified"
+   ],
+   "back_pain": [
+    "M54.9",
+    "Dorsalgia, unspecified"
+   ]
+  },
+  "diagnoses": {
+   "acs": [
+    "I24.9",
+    "Acute ischaemic heart disease, unspecified"
+   ],
+   "pe": [
+    "I26.9",
+    "Pulmonary embolism without mention of acute cor pulmonale"
+   ],
+   "aortic_dissection": [
+    "I71.0",
+    "Dissection of aorta [any part]"
+   ],
+   "pneumothorax": [
+    "J93.9",
+    "Pneumothorax, unspecified"
+   ],
+   "heart_failure": [
+    "I50.9",
+    "Heart failure, unspecified"
+   ],
+   "anaphylaxis": [
+    "T78.2",
+    "Anaphylactic shock, unspecified"
+   ],
+   "pneumonia": [
+    "J18.9",
+    "Pneumonia, unspecified"
+   ],
+   "sepsis": [
+    "A41.9",
+    "Sepsis, unspecified"
+   ],
+   "meningitis": [
+    "G03.9",
+    "Meningitis, unspecified"
+   ],
+   "sah": [
+    "I60.9",
+    "Subarachnoid haemorrhage, unspecified"
+   ],
+   "stroke_ich": [
+    "I64",
+    "Stroke, not specified as haemorrhage or infarction"
+   ],
+   "arrhythmia": [
+    "I49.9",
+    "Cardiac arrhythmia, unspecified"
+   ],
+   "unstable_arrhythmia": [
+    "I49.9",
+    "Cardiac arrhythmia, unspecified"
+   ],
+   "dvt": [
+    "I80.2",
+    "Phlebitis and thrombophlebitis of other deep vessels of lower extremities"
+   ],
+   "ugib": [
+    "K92.2",
+    "Gastrointestinal haemorrhage, unspecified"
+   ],
+   "ectopic": [
+    "O00.9",
+    "Ectopic pregnancy, unspecified"
+   ],
+   "aaa": [
+    "I71.3",
+    "Abdominal aortic aneurysm, ruptured"
+   ],
+   "hypoglycaemia": [
+    "E16.2",
+    "Hypoglycaemia, unspecified"
+   ],
+   "cauda_equina": [
+    "G83.4",
+    "Cauda equina syndrome"
+   ],
+   "obstruction": [
+    "K56.6",
+    "Other and unspecified intestinal obstruction"
+   ],
+   "intracranial_bleed": [
+    "I62.9",
+    "Intracranial haemorrhage (nontraumatic), unspecified"
+   ]
+  }
+ },
+ "returnPrecautions": {
+  "chest_pain": {
+   "en": [
+    "Chest pain that comes back, gets worse or lasts more than a few minutes",
+    "Pain spreading to the arm, jaw or back, or with sweating or nausea",
+    "Shortness of breath or fainting"
+   ],
+   "ar": [
+    "عودة ألم الصدر أو زيادته أو استمراره أكثر من بضع دقائق",
+    "انتشار الألم إلى الذراع أو الفك أو الظهر، أو مع تعرق أو غثيان",
+    "ضيق التنفس أو الإغماء"
+   ]
+  },
+  "dyspnea": {
+   "en": [
+    "Breathing that becomes harder",
+    "Chest pain, blue lips or coughing blood",
+    "Confusion or drowsiness"
+   ],
+   "ar": [
+    "زيادة صعوبة التنفس",
+    "ألم في الصدر أو ازرقاق الشفاه أو سعال دموي",
+    "ارتباك أو نعاس"
+   ]
+  },
+  "abdominal_pain": {
+   "en": [
+    "Pain that becomes worse or constant",
+    "Vomiting that does not stop, or blood in vomit or stool",
+    "Fever, fainting, or vaginal bleeding in pregnancy"
+   ],
+   "ar": [
+    "ألم يزداد أو يصبح مستمراً",
+    "قيء مستمر أو دم في القيء أو البراز",
+    "حمى أو إغماء أو نزيف مهبلي أثناء الحمل"
+   ]
+  },
+  "headache": {
+   "en": [
+    "A sudden, very severe headache",
+    "Weakness, numbness, trouble speaking or seeing",
+    "Neck stiffness with fever, confusion or a seizure"
+   ],
+   "ar": [
+    "صداع مفاجئ وشديد جداً",
+    "ضعف أو تنميل أو صعوبة في الكلام أو الرؤية",
+    "تيبس الرقبة مع حمى أو ارتباك أو تشنج"
+   ]
+  },
+  "syncope": {
+   "en": [
+    "Another faint, especially during exercise",
+    "Chest pain, palpitations or shortness of breath",
+    "An injury from falling"
+   ],
+   "ar": [
+    "إغماء آخر خاصة أثناء المجهود",
+    "ألم في الصدر أو خفقان أو ضيق تنفس",
+    "إصابة بسبب السقوط"
+   ]
+  },
+  "palpitations": {
+   "en": [
+    "Palpitations with chest pain, fainting or breathlessness",
+    "A fast heartbeat that does not settle"
+   ],
+   "ar": [
+    "خفقان مع ألم صدر أو إغماء أو ضيق تنفس",
+    "سرعة نبض لا تهدأ"
+   ]
+  },
+  "fever": {
+   "en": [
+    "Drowsiness or confusion",
+    "A rash that does not fade when pressed",
+    "Neck stiffness, difficulty breathing, or not passing urine"
+   ],
+   "ar": [
+    "نعاس أو ارتباك",
+    "طفح جلدي لا يختفي عند الضغط عليه",
+    "تيبس الرقبة أو صعوبة التنفس أو عدم التبول"
+   ]
+  },
+  "vomiting": {
+   "en": [
+    "Unable to keep fluids down",
+    "Blood or green fluid in the vomit",
+    "Severe abdominal pain or drowsiness"
+   ],
+   "ar": [
+    "عدم القدرة على الاحتفاظ بالسوائل",
+    "دم أو سائل أخضر في القيء",
+    "ألم بطن شديد أو نعاس"
+   ]
+  },
+  "altered_mental_status": {
+   "en": [
+    "Any new confusion or drowsiness",
+    "A seizure or new weakness"
+   ],
+   "ar": [
+    "أي ارتباك أو نعاس جديد",
+    "تشنج أو ضعف جديد"
+   ]
+  },
+  "back_pain": {
+   "en": [
+    "Weakness or numbness in the legs",
+    "Problems passing urine or controlling the bowels",
+    "Numbness around the genitals or buttocks, fever, or uncontrolled pain"
+   ],
+   "ar": [
+    "ضعف أو تنميل في الساقين",
+    "صعوبة في التبول أو التحكم في البراز",
+    "تنميل حول الأعضاء التناسلية أو الأرداف، أو حمى، أو ألم لا يمكن السيطرة عليه"
+   ]
+  }
+ },
+ "returnPrecautionsGeneral": {
+  "en": "Return to the emergency department immediately, or call emergency services, if you feel worse or are worried.",
+  "ar": "عد إلى الطوارئ فوراً أو اتصل بالإسعاف إذا ساءت حالتك أو شعرت بالقلق."
+ },
+ "returnPrecautionsStatus": "DRAFT safety-netting wording pending consultant review."
 }

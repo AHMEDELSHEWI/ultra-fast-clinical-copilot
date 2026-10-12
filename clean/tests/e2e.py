@@ -164,11 +164,24 @@ def main():
         page.fill('#evtext', 'Cardiology contacted'); page.click('[data-act="add-event"]')
         check('Cardiology contacted' in page.inner_text('main') and 'Aspirin given' in page.inner_text('main'), 'timeline event added with automatic time')
 
+        # ---- consultant outputs
+        page.click('[data-act="note-mode"][data-m="consultant"]')
+        check('CONSULTANT SUMMARY' in page.inner_text('main') and 'Outstanding issues' in page.inner_text('main'), 'consultant summary generated without another request')
+        page.click('[data-act="note-mode"][data-m="icd"]')
+        page.click('[data-act="icd-toggle"][data-code="R07.4"]')
+        page.click('[data-act="copy"][data-target="icd"]'); page.wait_for_selector('.toast')
+        check('R07.4' in page.evaluate("navigator.clipboard.readText()"), 'ICD-10 copy contains clinician-confirmed code')
+        page.click('[data-act="note-mode"][data-m="discharge"]')
+        page.click('[data-act="copy"][data-target="patient_ar"]'); page.wait_for_selector('.toast')
+        check('تعليمات المريض' in page.evaluate("navigator.clipboard.readText()"), 'Arabic patient instructions copy')
+
         # ---- finalize
         page.click('[data-act="note-mode"][data-m="note"]')
         page.click('[data-act="finalize"]'); page.click('[data-modal-act="ok"]')
         check('CASE COMPLETE' in page.inner_text('main'), 'case finalized')
         check(page.evaluate("window.__UFC.store.state.versions.some(v=>v.kind==='final')"), 'final version stored')
+        page.click('[data-act="copy"][data-target="mcchis"]'); page.wait_for_selector('.toast')
+        check(page.evaluate("navigator.clipboard.readText()").startswith('MCCHIS NOTE'), 'final screen: one-tap COPY MCCHIS')
 
         # ---- reload: OPEN LAST CASE restores everything
         page.wait_for_timeout(600)

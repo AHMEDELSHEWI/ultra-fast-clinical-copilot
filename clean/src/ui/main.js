@@ -17,6 +17,7 @@ import { scoreText } from '../core/scoreEngine.js';
 import { suggestInvestigations, invKey } from '../core/investigations.js';
 import { DRUGS, DRUG_BY_ID, DRUG_REVIEW } from '../content/drugs.js';
 import { calcDose, medContext, safetyChecks, suggestMeds, administered } from '../core/meds.js';
+import { OUTPUTS, icdSuggestions, suggestedSpecialties } from '../core/outputs.js';
 import { icon, tile, COMPLAINT_ICON } from './icons.js';
 import { makeT } from './i18n.js';
 
@@ -109,7 +110,11 @@ async function writeClipboard(text) {
   toast(ok ? t('copied') : t('copyFailed'), !ok);
 }
 async function copy(target) {
-  try { await writeClipboard(copyText(store, pack, target)); } catch (e) { toast(e.message, true); }
+  try {
+    if (OUTPUTS[target]) { await writeClipboard(OUTPUTS[target](store, pack)); return; }
+    if (target === 'followup') { const fu = store.getFact('discharge.followup'); if (!fu) { toast(t('nothingYet'), true); return; } await writeClipboard(`Follow-up: ${fu}`); return; }
+    await writeClipboard(copyText(store, pack, target));
+  } catch (e) { toast(e.message, true); }
 }
 
 // ================================================================ case lifecycle
@@ -581,10 +586,22 @@ function drugSheet(sh) {
 // ---------------------------------------------------------------- case: NOTE (documents, timeline, finalize)
 const DISPOSITIONS = ['Discharge home', 'Admit to ward', 'Admit to ICU', 'Observation', 'Transfer to another facility', 'Left against medical advice'];
 const EVENT_TYPES = [['treatment', 'evTreatment'], ['investigation', 'evInvestigation'], ['consult', 'evConsult'], ['reassessment', 'evReassess'], ['other', 'evOther']];
+function finalPanel() {
+  const btn = (target, label, kind = '') => `<button class="btn ${kind} block" data-act="copy" data-target="${target}">${icon('copy')}${esc(label)}</button>`;
+  return `<div class="card" style="border-color:var(--green-bd);background:var(--green-bg)"><div class="card-h">${tile('check', 'green')}<h4 style="color:var(--green)">${esc(t('caseComplete'))}</h4></div>
+    <div class="stack">${btn('complete', t('copyAll'), 'primary')}
+    <div class="answers">${btn('mcchis', 'COPY MCCHIS')}${btn('consultant', ui.lang === 'ar' ? 'نسخ ملخص الاستشاري' : 'COPY CONSULTANT SUMMARY')}${btn('discharge', ui.lang === 'ar' ? 'نسخ الخروج' : 'COPY DISCHARGE')}
+    ${btn('referral', ui.lang === 'ar' ? 'نسخ التحويل' : 'COPY REFERRAL')}${btn('icd', 'COPY ICD-10')}${btn('timeline', ui.lang === 'ar' ? 'نسخ الخط الزمني' : 'COPY TIMELINE')}</div>
+    <div class="row"><button class="btn small" data-act="backup">${icon('download')}${esc(t('backupNow'))}</button><span class="tiny">${esc(t('savedNote'))}</span></div></div></div>`;
+}
+
 function noteView() {
   const ro = isFinal();
-  const modes = [['note', 'clinicalNote'], ['timeline', 'tabTimeline']];
+  const modes = [['note', 'clinicalNote'], ['consultant', 'consultSummary'], ['referral', 'referral'], ['discharge', 'discharge'], ['icd', 'icd10'], ['mcchis', 'mcchis'], ['timeline', 'tabTimeline']];
   const seg = `<div class="seg">${modes.map(([m, k]) => `<button class="${ui.noteMode === m ? 'on' : ''}" data-act="note-mode" data-m="${m}">${esc(t(k))}</button>`).join('')}</div>`;
+  const fin = ro ? `${finalPanel()}<button class="btn block" data-act="reopen">${esc(t('reopen'))}</button>` : '';
+  const docBox = (target, label) => { let text = ''; try { text = OUTPUTS[target](store, pack); } catch (e) { text = e.message; }
+    return `<div class="doc">${esc(text)}</div><button class="btn primary block" data-act="copy" data-target="${target}">${icon('copy')}${esc(label)}</button>`; };
   if (ui.noteMode === 'timeline') {
     const events = store.timeline();
     const list = events.length ? `<ul class="tl">${events.map((e) => `<li><time>${esc(formatTime(e.at))}</time><span class="grow">${esc(e.text)}${e.corrections.length ? ` <span class="tiny">(${ui.lang === 'ar' ? 'تم تعديل الوقت' : 'time corrected'})</span>` : ''}</span>
@@ -592,18 +609,43 @@ function noteView() {
     const form = ro ? '' : `<div class="card flat stack"><div class="seg">${EVENT_TYPES.map(([v, k]) => `<button class="${ui.evType === v ? 'on' : ''}" data-act="ev-type" data-v="${v}">${esc(t(k))}</button>`).join('')}</div>
         <div class="field"><label for="evtext">${esc(t('eventText'))}</label><input id="evtext" type="text" data-enter="add-event"></div>
         <button class="btn primary block" data-act="add-event">${esc(t('addEvent'))}</button></div>`;
-    return `<div class="stack">${seg}${form}${list}<button class="btn block" data-act="copy" data-target="timeline" ${events.length ? '' : 'disabled'}>${icon('copy')}${esc(t('copy'))}</button></div>`;
+    return `<div class="stack">${seg}${fin}${form}${list}<button class="btn block" data-act="copy" data-target="timeline" ${events.length ? '' : 'disabled'}>${icon('copy')}${esc(t('copy'))}</button></div>`;
   }
-  const sections = buildSections(store, pack).filter((s) => !s.empty || s.core);
-  const secHtml = sections.map((s) => `<section class="sec"><header><h4>${esc(s.title)}</h4>
-      <button class="btn small" data-act="copy" data-target="${s.id}" ${s.empty ? 'disabled' : ''}>${icon('copy')}${esc(t('copy'))}</button></header>
-      ${s.lines.length ? s.lines.map((l) => `<p>${esc(l)}</p>`).join('') : `<p class="none">Not documented.</p>`}</section>`).join('');
+  if (ui.noteMode === 'consultant') return `<div class="stack">${seg}${fin}${docBox('consultant', ui.lang === 'ar' ? 'نسخ ملخص الاستشاري' : 'COPY CONSULTANT SUMMARY')}</div>`;
+  if (ui.noteMode === 'mcchis') return `<div class="stack">${seg}${fin}<div class="notice">${icon('info')}<span>${esc(ui.lang === 'ar' ? 'صيغة SOAP مؤقتاً — ستُطابق نموذج MCCHIS الخاص بمستشفاك عند إرساله.' : 'SOAP layout for now — will match your hospital MCCHIS template once supplied.')}</span></div>${docBox('mcchis', 'COPY MCCHIS')}</div>`;
+  if (ui.noteMode === 'referral') {
+    const cur = store.getFact('referral.specialty');
+    const specs = [...new Set([...suggestedSpecialties(pack, store), ...(cur ? [cur] : [])])];
+    const form = ro ? '' : `<div class="card stack"><div class="field"><label>${esc(ui.lang === 'ar' ? 'التخصص' : 'Specialty')}</label><div class="answers">${specs.map((x) => `<button class="opt ${cur === x ? 'on' : ''}" data-act="ref-spec" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div>
+        <input id="refother" type="text" data-save="referral.specialty" placeholder="${ui.lang === 'ar' ? 'تخصص آخر' : 'Other specialty'}" value="${specs.includes(cur) ? '' : esc(cur ?? '')}"></div>
+      <div class="field"><label for="refq">${esc(ui.lang === 'ar' ? 'السؤال المحدد للاستشاري' : 'Specific question for the consultant')}</label><textarea id="refq" data-save="referral.question">${esc(store.getFact('referral.question') ?? '')}</textarea></div></div>`;
+    return `<div class="stack">${seg}${fin}${form}${docBox('referral', ui.lang === 'ar' ? 'نسخ التحويل' : 'COPY REFERRAL')}</div>`;
+  }
+  if (ui.noteMode === 'discharge') {
+    const form = ro ? '' : `<div class="card stack"><div class="field"><label for="dmeds">${esc(ui.lang === 'ar' ? 'أدوية الخروج' : 'Discharge medications')}</label><textarea id="dmeds" data-save="discharge.meds">${esc(store.getFact('discharge.meds') ?? '')}</textarea></div>
+      <div class="field"><label for="dfu">${esc(ui.lang === 'ar' ? 'المتابعة' : 'Follow-up')}</label><input id="dfu" type="text" data-save="discharge.followup" value="${esc(store.getFact('discharge.followup') ?? '')}"></div>
+      <p class="tiny">${esc(pack.returnPrecautionsStatus)}</p></div>`;
+    return `<div class="stack">${seg}${fin}${form}${docBox('discharge', ui.lang === 'ar' ? 'نسخ الخروج' : 'COPY DISCHARGE')}
+      <div class="answers"><button class="btn block" data-act="copy" data-target="patient">${icon('copy')}${esc(ui.lang === 'ar' ? 'تعليمات المريض (EN)' : 'COPY PATIENT INSTRUCTIONS (EN)')}</button>
+      <button class="btn block" data-act="copy" data-target="patient_ar">${icon('copy')}${esc(ui.lang === 'ar' ? 'تعليمات المريض (عربي)' : 'COPY PATIENT INSTRUCTIONS (AR)')}</button>
+      <button class="btn block" data-act="copy" data-target="followup">${icon('copy')}${esc(ui.lang === 'ar' ? 'نسخ المتابعة' : 'COPY FOLLOW-UP')}</button></div></div>`;
+  }
+  if (ui.noteMode === 'icd') {
+    const list = icdSuggestions(store, pack);
+    return `<div class="stack">${seg}${fin}<div class="notice">${icon('info')}<span>${esc(pack.icd10.system)}</span></div>
+      ${list.length ? list.map((x) => `<div class="item ${x.confirmed ? 'req' : ''}">${tile('clipboard', x.kind === 'symptom' ? 'blue' : 'orange', 'sm')}<div class="body"><div class="title">${esc(x.code)} — ${esc(x.label)}</div>
+        <div class="sub">${esc(x.basis)}</div><div class="tiny">${esc(x.confidence)}</div></div><div class="acts">${ro ? (x.confirmed ? `<span class="pill ok">${icon('check')}</span>` : '') : `<button class="btn small ${x.confirmed ? '' : 'primary'}" data-act="icd-toggle" data-code="${esc(x.code)}">${esc(x.confirmed ? t('undo') : t('confirm'))}</button>`}</div></div>`).join('') : `<p class="muted">—</p>`}
+      <button class="btn primary block" data-act="copy" data-target="icd">${icon('copy')}COPY ICD-10</button></div>`;
+  }
+  const sections = buildSections(store, pack).filter((x) => !x.empty || x.core);
+  const secHtml = sections.map((x) => `<section class="sec"><header><h4>${esc(x.title)}</h4>
+      <button class="btn small" data-act="copy" data-target="${x.id}" ${x.empty ? 'disabled' : ''}>${icon('copy')}${esc(t('copy'))}</button></header>
+      ${x.lines.length ? x.lines.map((l) => `<p>${esc(l)}</p>`).join('') : `<p class="none">Not documented.</p>`}</section>`).join('');
   const edit = ro ? '' : `<div class="card stack"><div class="card-h">${tile('edit', 'blue')}<h4>${esc(t('assessment'))}</h4></div>
       <div class="field"><label for="imp">${esc(t('impression'))}</label><textarea id="imp" data-save="assessment.impression">${esc(store.getFact('assessment.impression') ?? '')}</textarea></div>
       <div class="field"><label for="dx">${esc(t('diagnosis'))}</label><input id="dx" type="text" data-save="assessment.diagnosis" value="${esc(store.getFact('assessment.diagnosis') ?? '')}"></div>
       <div class="field"><label>${esc(t('disposition'))}</label><div class="answers">${DISPOSITIONS.map((d) => `<button class="opt ${store.getFact('disposition.decision') === d ? 'on' : ''}" data-act="dispo" data-v="${esc(d)}">${esc(d)}</button>`).join('')}</div></div>
       <button class="btn green block" data-act="finalize">${icon('check')}${esc(t('finalize'))}</button></div>`;
-  const fin = ro ? `<div class="alert ok">${icon('check')}<span class="t">${esc(t('caseComplete'))}</span></div><button class="btn block" data-act="reopen">${esc(t('reopen'))}</button>` : '';
   return `<div class="stack">${seg}${fin}<div>${secHtml}</div>${edit}</div>`;
 }
 
@@ -1122,6 +1164,8 @@ const handlers = {
   },
   'copy': (d) => copy(d.target),
   'note-mode': (d) => { ui.noteMode = d.m; render(); },
+  'ref-spec': (d) => { const cur = store.getFact('referral.specialty'); store.setFact('referral.specialty', d.v, { origin: 'clinician', replace: cur !== undefined, reason: 'Updated by clinician' }); },
+  'icd-toggle': (d) => { const k = `icd.${d.code}`; if (store.getFact(k)) store.removeFact(k, 'Unconfirmed by clinician'); else store.setFact(k, 'confirmed', { origin: 'clinician' }); },
   'ev-type': (d) => { ui.evType = d.v; render(); },
   'add-event': () => { const text = ($('#evtext')?.value ?? '').trim(); if (text) store.addEvent({ type: ui.evType, text }); },
   'add-treatment': () => { const text = ($('#txtext')?.value ?? '').trim(); if (text) store.addEvent({ type: 'treatment', text }); },
