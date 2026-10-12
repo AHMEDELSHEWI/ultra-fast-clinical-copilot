@@ -1,0 +1,39 @@
+name: Repository QA
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  RELEASE: '1.0.13'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Release is reproducible from sources
+        run: |
+          set -euo pipefail
+          node tools/build-release.mjs "$RELEASE"
+          git diff --exit-code -- "v${RELEASE}.html"
+
+      - name: Static integrity checks
+        run: node tools/verify-release.mjs "$RELEASE"
+
+      - name: Browser smoke test (no freezes, modules load, offline works)
+        run: |
+          set -euo pipefail
+          python3 -m pip install playwright
+          python3 -m playwright install --with-deps chromium
+          python3 tests/smoke_test.py "$RELEASE"

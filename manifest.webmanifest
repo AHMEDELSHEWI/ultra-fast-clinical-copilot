@@ -1,0 +1,13 @@
+{
+  "name": "Ultra Fast Clinical Copilot",
+  "short_name": "UF Copilot",
+  "description": "Clinical decision support and documentation. Clinician verification required.",
+  "start_url": "./v1.0.13.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#ffffff",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
