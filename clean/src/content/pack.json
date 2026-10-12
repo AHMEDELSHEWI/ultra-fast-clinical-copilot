@@ -94,7 +94,7 @@
   {
    "key": "palpitations",
    "noun": "palpitations",
-   "icon": "heart",
+   "icon": "palpitations",
    "label": {
     "en": "Palpitations",
     "ar": "خفقان"
@@ -128,7 +128,7 @@
   {
    "key": "vomiting",
    "noun": "vomiting",
-   "icon": "stomach",
+   "icon": "vomit",
    "label": {
     "en": "Vomiting",
     "ar": "قيء"
@@ -145,7 +145,7 @@
   {
    "key": "altered_mental_status",
    "noun": "altered mental status",
-   "icon": "brain",
+   "icon": "confusion",
    "label": {
     "en": "Confusion / altered mental status",
     "ar": "ارتباك / تغير الوعي"
@@ -1897,6 +1897,165 @@
    "pmid": "15304025",
    "year": 2004,
    "latestKnown": "Original derivation paper."
+  },
+  "heart2013": {
+   "citation": "Backus BE, et al. A prospective validation of the HEART score for chest pain patients at the emergency department. Int J Cardiol 2013;168(3):2153-2158.",
+   "year": 2013,
+   "latestKnown": "Prospective validation.",
+   "pmid": "23465250",
+   "doi": "10.1016/j.ijcard.2013.01.255"
+  },
+  "edacs2014": {
+   "citation": "Than M, et al. Development and validation of the Emergency Department Assessment of Chest pain Score and 2 h accelerated diagnostic protocol. Emerg Med Australas 2014;26(1):34-44.",
+   "year": 2014,
+   "latestKnown": "Original publication.",
+   "pmid": "24428678",
+   "doi": "10.1111/1742-6723.12164"
+  },
+  "timi2000": {
+   "citation": "Antman EM, et al. The TIMI risk score for unstable angina/non-ST elevation MI. JAMA 2000;284(7):835-842.",
+   "year": 2000,
+   "latestKnown": "Original publication.",
+   "pmid": "10938172",
+   "doi": "10.1001/jama.284.7.835"
+  },
+  "spesi2010": {
+   "citation": "Jiménez D, et al. Simplification of the pulmonary embolism severity index for prognostication in patients with acute symptomatic pulmonary embolism. Arch Intern Med 2010;170(15):1383-1389.",
+   "year": 2010,
+   "latestKnown": "Original publication.",
+   "pmid": "20696966",
+   "doi": "10.1001/archinternmed.2010.199"
+  },
+  "wellsdvt2003": {
+   "citation": "Wells PS, et al. Evaluation of D-dimer in the diagnosis of suspected deep-vein thrombosis. N Engl J Med 2003;349(13):1227-1235.",
+   "year": 2003,
+   "latestKnown": "Original publication.",
+   "pmid": "14507948",
+   "doi": "10.1056/NEJMoa023153"
+  },
+  "news2017": {
+   "citation": "Royal College of Physicians. National Early Warning Score (NEWS) 2: Standardising the assessment of acute-illness severity in the NHS. Updated report of a working party. London: RCP, 2017.",
+   "year": 2017,
+   "latestKnown": "Latest version verified in this build: 2017 (RCP).",
+   "url": "https://www.rcp.ac.uk/media/a4ibkkbf/news2-final-report_0_0.pdf"
+  },
+  "qsofa2016": {
+   "citation": "Seymour CW, et al. Assessment of Clinical Criteria for Sepsis (Sepsis-3). JAMA 2016;315(8):762-774.",
+   "year": 2016,
+   "latestKnown": "Original publication.",
+   "pmid": "26903335",
+   "doi": "10.1001/jama.2016.0288"
+  },
+  "ssc2021": {
+   "citation": "Evans L, et al. Surviving Sepsis Campaign: International Guidelines for Management of Sepsis and Septic Shock 2021. Crit Care Med 2021;49(11):e1063-e1143.",
+   "year": 2021,
+   "latestKnown": "Latest version verified in this build: 2021. A newer edition may exist; check before release.",
+   "pmid": "34605781",
+   "doi": "10.1097/CCM.0000000000005337"
+  },
+  "curb2003": {
+   "citation": "Lim WS, et al. Defining community acquired pneumonia severity on presentation to hospital: an international derivation and validation study. Thorax 2003;58(5):377-382.",
+   "year": 2003,
+   "latestKnown": "Original publication.",
+   "pmid": "12728155",
+   "doi": "10.1136/thorax.58.5.377"
+  },
+  "csrs2020": {
+   "citation": "Thiruganasambandamoorthy V, et al. Multicenter Emergency Department Validation of the Canadian Syncope Risk Score. JAMA Intern Med 2020;180(5):737-744.",
+   "year": 2020,
+   "latestKnown": "Validation study.",
+   "pmid": "32202605",
+   "doi": "10.1001/jamainternmed.2020.0288"
+  },
+  "chads2010": {
+   "citation": "Lip GYH, et al. Refining clinical risk stratification for predicting stroke and thromboembolism in atrial fibrillation using a novel risk factor-based approach. Chest 2010;137(2):263-272.",
+   "year": 2010,
+   "latestKnown": "Original publication.",
+   "pmid": "19762550",
+   "doi": "10.1378/chest.09-1584"
+  },
+  "escaf2024": {
+   "citation": "Van Gelder IC, et al. 2024 ESC Guidelines for the management of atrial fibrillation. Eur Heart J 2024;45(36):3314-3414.",
+   "year": 2024,
+   "latestKnown": "Latest version verified in this build: 2024.",
+   "pmid": "39210723",
+   "doi": "10.1093/eurheartj/ehae176"
+  },
+  "accaf2023": {
+   "citation": "Joglar JA, et al. 2023 ACC/AHA/ACCP/HRS Guideline for the Diagnosis and Management of Atrial Fibrillation. Circulation 2024;149(1):e1-e156.",
+   "year": 2023,
+   "latestKnown": "Latest version verified in this build: 2023.",
+   "pmid": "38033089",
+   "doi": "10.1161/CIR.0000000000001193"
+  },
+  "hasbled2010": {
+   "citation": "Pisters R, et al. A novel user-friendly score (HAS-BLED) to assess 1-year risk of major bleeding in patients with atrial fibrillation. Chest 2010;138(5):1093-1100.",
+   "year": 2010,
+   "latestKnown": "Original publication.",
+   "pmid": "20299623",
+   "doi": "10.1378/chest.10-0134"
+  },
+  "ottawasah2013": {
+   "citation": "Perry JJ, et al. Clinical decision rules to rule out subarachnoid hemorrhage for acute headache. JAMA 2013;310(12):1248-1255.",
+   "year": 2013,
+   "latestKnown": "Original publication.",
+   "pmid": "24065011",
+   "doi": "10.1001/jama.2013.278018"
+  },
+  "cthead2001": {
+   "citation": "Stiell IG, et al. The Canadian CT Head Rule for patients with minor head injury. Lancet 2001;357(9266):1391-1396.",
+   "year": 2001,
+   "latestKnown": "Original publication.",
+   "pmid": "11356436",
+   "doi": "10.1016/s0140-6736(00)04561-x"
+  },
+  "cspine2001": {
+   "citation": "Stiell IG, et al. The Canadian C-spine rule for radiography in alert and stable trauma patients. JAMA 2001;286(15):1841-1848.",
+   "year": 2001,
+   "latestKnown": "Original publication.",
+   "pmid": "11597285",
+   "doi": "10.1001/jama.286.15.1841"
+  },
+  "nexus2000": {
+   "citation": "Hoffman JR, et al. Validity of a set of clinical criteria to rule out injury to the cervical spine in patients with blunt trauma. N Engl J Med 2000;343(2):94-99.",
+   "year": 2000,
+   "latestKnown": "Original publication.",
+   "pmid": "10891516",
+   "doi": "10.1056/NEJM200007133430203"
+  },
+  "alvarado1986": {
+   "citation": "Alvarado A. A practical score for the early diagnosis of acute appendicitis. Ann Emerg Med 1986;15(5):557-564.",
+   "year": 1986,
+   "latestKnown": "Original publication.",
+   "pmid": "3963537",
+   "doi": "10.1016/s0196-0644(86)80993-3"
+  },
+  "gbs2000": {
+   "citation": "Blatchford O, Murray WR, Blatchford M. A risk score to predict need for treatment for upper-gastrointestinal haemorrhage. Lancet 2000;356(9238):1318-1321.",
+   "year": 2000,
+   "latestKnown": "Original publication.",
+   "pmid": "11073021",
+   "doi": "10.1016/S0140-6736(00)02816-6"
+  },
+  "mcisaac1998": {
+   "citation": "McIsaac WJ, et al. A clinical score to reduce unnecessary antibiotic use in patients with sore throat. CMAJ 1998;158(1):75-83.",
+   "year": 1998,
+   "latestKnown": "Original publication.",
+   "pmid": "9475915"
+  },
+  "centor1981": {
+   "citation": "Centor RM, et al. The diagnosis of strep throat in adults in the emergency room. Med Decis Making 1981;1(3):239-246.",
+   "year": 1981,
+   "latestKnown": "Original publication.",
+   "pmid": "6763125",
+   "doi": "10.1177/0272989X8100100304"
+  },
+  "cg1976": {
+   "citation": "Cockcroft DW, Gault MH. Prediction of creatinine clearance from serum creatinine. Nephron 1976;16(1):31-41.",
+   "year": 1976,
+   "latestKnown": "Original publication.",
+   "pmid": "1244564",
+   "doi": "10.1159/000180580"
   }
  },
  "reasoning": {
@@ -1962,10 +2121,12 @@
     ],
     "scores": [
      {
-      "name": "HEART score",
-      "why": "Acute chest pain: structured risk stratification for major cardiac events.",
-      "source": "heart2008",
-      "adultOnly": true
+      "id": "heart",
+      "why": "Acute chest pain: risk of major adverse cardiac events."
+     },
+     {
+      "id": "edacs",
+      "why": "Chest pain: EDACS accelerated diagnostic protocol (with ECG and 0/2 h troponin)."
      }
     ],
     "sources": [
@@ -2009,16 +2170,12 @@
     ],
     "scores": [
      {
-      "name": "Wells score for PE",
-      "why": "Pre-test probability when PE is being considered.",
-      "source": "wells2000",
-      "adultOnly": true
+      "id": "wells_pe",
+      "why": "PE is a must-not-miss cause of chest pain with dyspnoea."
      },
      {
-      "name": "PERC rule",
-      "why": "Only for low-probability patients: may avoid further PE testing.",
-      "source": "perc2004",
-      "adultOnly": true
+      "id": "perc",
+      "why": "Only if clinical suspicion for PE is low."
      }
     ],
     "sources": [
@@ -2128,10 +2285,8 @@
     ],
     "scores": [
      {
-      "name": "Canadian Syncope Risk Score",
-      "why": "Syncope: 30-day serious adverse event risk after ED assessment.",
-      "source": "csrs2016",
-      "adultOnly": true
+      "id": "csrs",
+      "why": "Syncope without a serious cause found in the ED: 30-day risk."
      }
     ],
     "sources": [
@@ -2144,15 +2299,15 @@
      "any": [
       {
        "fact": "hx.syncope.exertional",
-       "eq": true
+       "eq": "yes"
       },
       {
        "fact": "hx.syncope.palpitations_before",
-       "eq": true
+       "eq": "yes"
       },
       {
        "fact": "hx.syncope.family_sudden_death",
-       "eq": true
+       "eq": "yes"
       }
      ]
     },
@@ -2319,7 +2474,16 @@
       "sources": []
      }
     ],
-    "scores": [],
+    "scores": [
+     {
+      "id": "wells_pe",
+      "why": "Dyspnoea: pre-test probability of PE."
+     },
+     {
+      "id": "perc",
+      "why": "Only if clinical suspicion for PE is low."
+     }
+    ],
     "sources": [
      "pe2019"
     ]
@@ -2346,7 +2510,12 @@
       "sources": []
      }
     ],
-    "scores": [],
+    "scores": [
+     {
+      "id": "alvarado",
+      "why": "Abdominal pain: probability of appendicitis."
+     }
+    ],
     "sources": []
    },
    {
@@ -2478,7 +2647,12 @@
       "sources": []
      }
     ],
-    "scores": [],
+    "scores": [
+     {
+      "id": "ottawa_sah",
+      "why": "New headache peaking within 1 hour: who needs SAH investigation."
+     }
+    ],
     "sources": []
    },
    {
@@ -2487,11 +2661,11 @@
      "any": [
       {
        "fact": "sx.neck_stiffness",
-       "eq": true
+       "eq": "yes"
       },
       {
        "fact": "sx.focal_weakness",
-       "eq": true
+       "eq": "yes"
       }
      ]
     },
@@ -2547,7 +2721,12 @@
       "sources": []
      }
     ],
-    "scores": [],
+    "scores": [
+     {
+      "id": "qsofa",
+      "why": "Suspected infection: prompt to consider sepsis (not a stand-alone screen)."
+     }
+    ],
     "sources": []
    },
    {
@@ -2560,7 +2739,7 @@
       },
       {
        "fact": "pmh.immunosuppressed",
-       "eq": true
+       "eq": "yes"
       }
      ]
     },
@@ -2623,7 +2802,7 @@
     "id": "r_vomit_blood",
     "when": {
      "fact": "sx.vomiting_blood",
-     "eq": true
+     "eq": "yes"
     },
     "cluster": {
      "en": "Possible upper GI bleeding",
@@ -2644,7 +2823,12 @@
       "sources": []
      }
     ],
-    "scores": [],
+    "scores": [
+     {
+      "id": "gbs",
+      "why": "Upper GI bleeding: need for intervention."
+     }
+    ],
     "sources": []
    },
    {
@@ -2696,21 +2880,14 @@
       "sources": []
      }
     ],
-    "scores": [
-     {
-      "name": "Glasgow Coma Scale",
-      "why": "Altered consciousness: calculated automatically from the vitals tab.",
-      "source": null,
-      "adultOnly": false
-     }
-    ],
+    "scores": [],
     "sources": []
    },
    {
     "id": "r_ams_trauma",
     "when": {
      "fact": "hx.altered_mental_status.head_injury",
-     "eq": true
+     "eq": "yes"
     },
     "cluster": {
      "en": "Head injury with altered consciousness",
@@ -2731,7 +2908,12 @@
       "sources": []
      }
     ],
-    "scores": [],
+    "scores": [
+     {
+      "id": "ct_head",
+      "why": "Head injury with GCS 13–15: who needs CT."
+     }
+    ],
     "sources": []
    },
    {
@@ -2764,11 +2946,11 @@
      "any": [
       {
        "fact": "sx.leg_weakness_numbness",
-       "eq": true
+       "eq": "yes"
       },
       {
        "fact": "sx.bladder_bowel",
-       "eq": true
+       "eq": "yes"
       }
      ]
     },
@@ -2839,7 +3021,1351 @@
     "sources": [
      "aorta2022"
     ]
+   },
+   {
+    "id": "r_acs_considered",
+    "when": {
+     "fact": "dx.consider.acs",
+     "exists": true
+    },
+    "specialties": [
+     "Cardiology"
+    ],
+    "mustNotMiss": [],
+    "scores": [
+     {
+      "id": "timi",
+      "why": "ACS under consideration: 14-day risk (UA/NSTEMI)."
+     }
+    ],
+    "sources": [
+     "acs2025"
+    ]
+   },
+   {
+    "id": "r_pe_considered",
+    "when": {
+     "fact": "dx.consider.pe",
+     "exists": true
+    },
+    "specialties": [
+     "Pulmonology"
+    ],
+    "mustNotMiss": [],
+    "scores": [
+     {
+      "id": "spesi",
+      "why": "Once PE is confirmed: 30-day mortality risk."
+     }
+    ],
+    "sources": [
+     "pe2019"
+    ]
+   },
+   {
+    "id": "r_pneumonia",
+    "when": {
+     "all": [
+      {
+       "any": [
+        {
+         "fact": "complaint.dyspnea",
+         "eq": true
+        },
+        {
+         "fact": "complaint.fever",
+         "eq": true
+        }
+       ]
+      },
+      {
+       "fact": "sx.cough",
+       "eq": "yes"
+      }
+     ]
+    },
+    "cluster": {
+     "en": "Possible lower respiratory tract infection",
+     "ar": "احتمال عدوى الجهاز التنفسي السفلي"
+    },
+    "specialties": [
+     "Pulmonology",
+     "Infectious Diseases"
+    ],
+    "mustNotMiss": [
+     {
+      "id": "pneumonia",
+      "dx": {
+       "en": "Pneumonia",
+       "ar": "التهاب رئوي"
+      },
+      "why": "Cough with fever or dyspnoea; assess severity.",
+      "sources": []
+     }
+    ],
+    "scores": [
+     {
+      "id": "curb65",
+      "why": "Suspected community-acquired pneumonia: severity."
+     }
+    ],
+    "sources": []
+   },
+   {
+    "id": "r_af",
+    "when": {
+     "any": [
+      {
+       "fact": "ecg.rhythm",
+       "eq": "af"
+      },
+      {
+       "fact": "ecg.rhythm",
+       "eq": "flutter"
+      }
+     ]
+    },
+    "cluster": {
+     "en": "Atrial fibrillation / flutter on ECG",
+     "ar": "رجفان / رفرفة أذينية في التخطيط"
+    },
+    "specialties": [
+     "Cardiology"
+    ],
+    "mustNotMiss": [],
+    "scores": [
+     {
+      "id": "chadsvasc",
+      "why": "AF: thromboembolic risk."
+     },
+     {
+      "id": "hasbled",
+      "why": "AF: bleeding risk if anticoagulated."
+     }
+    ],
+    "sources": [
+     "escaf2024",
+     "accaf2023"
+    ]
+   },
+   {
+    "id": "r_dvt",
+    "when": {
+     "any": [
+      {
+       "fact": "sx.leg_swelling",
+       "eq": "yes"
+      },
+      {
+       "fact": "sx.unilateral_leg_swelling",
+       "eq": "yes"
+      }
+     ]
+    },
+    "specialties": [
+     "Vascular Medicine"
+    ],
+    "mustNotMiss": [
+     {
+      "id": "dvt",
+      "dx": {
+       "en": "Deep vein thrombosis",
+       "ar": "جلطة الأوردة العميقة"
+      },
+      "why": "Leg swelling, especially unilateral, may be DVT; associated with PE.",
+      "sources": [
+       "pe2019"
+      ]
+     }
+    ],
+    "scores": [
+     {
+      "id": "wells_dvt",
+      "why": "Leg swelling: pre-test probability of DVT."
+     }
+    ],
+    "sources": [
+     "pe2019"
+    ]
    }
   ]
- }
+ },
+ "investigationCatalog": [
+  {
+   "id": "ecg",
+   "label": {
+    "en": "12-lead ECG",
+    "ar": "تخطيط قلب 12 قطب"
+   },
+   "kind": "ecg",
+   "doc": "12-lead ECG"
+  },
+  {
+   "id": "troponin",
+   "label": {
+    "en": "High-sensitivity troponin",
+    "ar": "تروبونين عالي الحساسية"
+   },
+   "kind": "lab",
+   "doc": "High-sensitivity troponin"
+  },
+  {
+   "id": "cbc",
+   "label": {
+    "en": "Full blood count",
+    "ar": "صورة دم كاملة"
+   },
+   "kind": "lab",
+   "doc": "Full blood count"
+  },
+  {
+   "id": "ue",
+   "label": {
+    "en": "Urea, electrolytes and creatinine",
+    "ar": "يوريا وأملاح وكرياتينين"
+   },
+   "kind": "lab",
+   "doc": "Urea, electrolytes and creatinine"
+  },
+  {
+   "id": "lft",
+   "label": {
+    "en": "Liver function tests",
+    "ar": "وظائف الكبد"
+   },
+   "kind": "lab",
+   "doc": "Liver function tests"
+  },
+  {
+   "id": "lipase",
+   "label": {
+    "en": "Lipase",
+    "ar": "الليباز"
+   },
+   "kind": "lab",
+   "doc": "Lipase"
+  },
+  {
+   "id": "glucose_cap",
+   "label": {
+    "en": "Capillary glucose",
+    "ar": "سكر الدم الشعري"
+   },
+   "kind": "bedside",
+   "doc": "Capillary glucose"
+  },
+  {
+   "id": "blood_gas",
+   "label": {
+    "en": "Blood gas (venous or arterial)",
+    "ar": "غازات الدم"
+   },
+   "kind": "lab",
+   "doc": "Blood gas (venous or arterial)"
+  },
+  {
+   "id": "lactate",
+   "label": {
+    "en": "Lactate",
+    "ar": "اللاكتات"
+   },
+   "kind": "lab",
+   "doc": "Lactate"
+  },
+  {
+   "id": "blood_cultures",
+   "label": {
+    "en": "Blood cultures",
+    "ar": "مزرعة دم"
+   },
+   "kind": "lab",
+   "doc": "Blood cultures"
+  },
+  {
+   "id": "crp",
+   "label": {
+    "en": "CRP",
+    "ar": "بروتين سي التفاعلي"
+   },
+   "kind": "lab",
+   "doc": "CRP"
+  },
+  {
+   "id": "d_dimer",
+   "label": {
+    "en": "D-dimer",
+    "ar": "دي دايمر"
+   },
+   "kind": "lab",
+   "doc": "D-dimer"
+  },
+  {
+   "id": "bnp",
+   "label": {
+    "en": "BNP / NT-proBNP",
+    "ar": "الببتيد المدر للصوديوم"
+   },
+   "kind": "lab",
+   "doc": "BNP / NT-proBNP"
+  },
+  {
+   "id": "urinalysis",
+   "label": {
+    "en": "Urinalysis",
+    "ar": "تحليل بول"
+   },
+   "kind": "lab",
+   "doc": "Urinalysis"
+  },
+  {
+   "id": "hcg",
+   "label": {
+    "en": "Pregnancy test (β-hCG)",
+    "ar": "اختبار حمل"
+   },
+   "kind": "lab",
+   "doc": "Pregnancy test (β-hCG)"
+  },
+  {
+   "id": "coag",
+   "label": {
+    "en": "Coagulation profile (PT/INR)",
+    "ar": "وظائف التخثر"
+   },
+   "kind": "lab",
+   "doc": "Coagulation profile (PT/INR)"
+  },
+  {
+   "id": "group_screen",
+   "label": {
+    "en": "Blood group and antibody screen",
+    "ar": "فصيلة الدم والتوافق"
+   },
+   "kind": "lab",
+   "doc": "Blood group and antibody screen"
+  },
+  {
+   "id": "tsh",
+   "label": {
+    "en": "TSH",
+    "ar": "هرمون الغدة الدرقية"
+   },
+   "kind": "lab",
+   "doc": "TSH"
+  },
+  {
+   "id": "mg",
+   "label": {
+    "en": "Magnesium",
+    "ar": "المغنيسيوم"
+   },
+   "kind": "lab",
+   "doc": "Magnesium"
+  },
+  {
+   "id": "ketones",
+   "label": {
+    "en": "Blood ketones",
+    "ar": "الكيتونات في الدم"
+   },
+   "kind": "lab",
+   "doc": "Blood ketones"
+  },
+  {
+   "id": "tox_levels",
+   "label": {
+    "en": "Paracetamol and salicylate levels",
+    "ar": "مستوى الباراسيتامول والساليسيلات"
+   },
+   "kind": "lab",
+   "doc": "Paracetamol and salicylate levels"
+  },
+  {
+   "id": "esr",
+   "label": {
+    "en": "ESR",
+    "ar": "سرعة الترسيب"
+   },
+   "kind": "lab",
+   "doc": "ESR"
+  },
+  {
+   "id": "orthostatic",
+   "label": {
+    "en": "Orthostatic vital signs",
+    "ar": "العلامات الحيوية بالوقوف"
+   },
+   "kind": "bedside",
+   "doc": "Orthostatic vital signs"
+  },
+  {
+   "id": "monitor",
+   "label": {
+    "en": "Continuous cardiac monitoring",
+    "ar": "مراقبة قلبية مستمرة"
+   },
+   "kind": "bedside",
+   "doc": "Continuous cardiac monitoring"
+  },
+  {
+   "id": "cxr",
+   "label": {
+    "en": "Chest X-ray",
+    "ar": "أشعة صدر"
+   },
+   "kind": "imaging",
+   "doc": "Chest X-ray"
+  },
+  {
+   "id": "ctpa",
+   "label": {
+    "en": "CT pulmonary angiography",
+    "ar": "أشعة مقطعية لشرايين الرئة"
+   },
+   "kind": "imaging",
+   "doc": "CT pulmonary angiography"
+  },
+  {
+   "id": "ct_head",
+   "label": {
+    "en": "Non-contrast CT head",
+    "ar": "أشعة مقطعية للرأس بدون صبغة"
+   },
+   "kind": "imaging",
+   "doc": "Non-contrast CT head"
+  },
+  {
+   "id": "cta_aorta",
+   "label": {
+    "en": "CT angiography of the aorta",
+    "ar": "أشعة مقطعية بالصبغة للأبهر"
+   },
+   "kind": "imaging",
+   "doc": "CT angiography of the aorta"
+  },
+  {
+   "id": "ct_abdo",
+   "label": {
+    "en": "CT abdomen and pelvis",
+    "ar": "أشعة مقطعية للبطن والحوض"
+   },
+   "kind": "imaging",
+   "doc": "CT abdomen and pelvis"
+  },
+  {
+   "id": "pocus_aorta",
+   "label": {
+    "en": "Point-of-care ultrasound: abdominal aorta",
+    "ar": "موجات صوتية سريرية للأبهر البطني"
+   },
+   "kind": "imaging",
+   "doc": "Point-of-care ultrasound: abdominal aorta"
+  },
+  {
+   "id": "us_dvt",
+   "label": {
+    "en": "Compression ultrasound of the leg",
+    "ar": "موجات صوتية ضاغطة للساق"
+   },
+   "kind": "imaging",
+   "doc": "Compression ultrasound of the leg"
+  },
+  {
+   "id": "mri_spine",
+   "label": {
+    "en": "Emergency MRI spine",
+    "ar": "رنين مغناطيسي طارئ للعمود الفقري"
+   },
+   "kind": "imaging",
+   "doc": "Emergency MRI spine"
+  },
+  {
+   "id": "lp",
+   "label": {
+    "en": "Lumbar puncture",
+    "ar": "بزل قطني"
+   },
+   "kind": "procedure",
+   "doc": "Lumbar puncture"
+  },
+  {
+   "id": "spine_imaging",
+   "label": {
+    "en": "Spinal imaging",
+    "ar": "تصوير العمود الفقري"
+   },
+   "kind": "imaging",
+   "doc": "Spinal imaging"
+  }
+ ],
+ "investigationRules": [
+  {
+   "id": "i_chest",
+   "when": {
+    "fact": "complaint.chest_pain",
+    "eq": true
+   },
+   "items": [
+    {
+     "id": "ecg",
+     "tier": "now",
+     "why": "Acute chest pain: identify STEMI and ischaemia early (guideline: ECG within 10 minutes of arrival).",
+     "sources": [
+      "cp2021"
+     ]
+    },
+    {
+     "id": "troponin",
+     "tier": "now",
+     "why": "Myocardial injury assessment; use with a validated accelerated pathway.",
+     "sources": [
+      "cp2021",
+      "acs2025"
+     ]
+    },
+    {
+     "id": "cxr",
+     "tier": "soon",
+     "why": "Looks for alternative causes: pneumothorax, pneumonia, widened mediastinum.",
+     "sources": [
+      "cp2021"
+     ]
+    },
+    {
+     "id": "monitor",
+     "tier": "now",
+     "why": "Arrhythmia risk while ACS is not excluded.",
+     "sources": []
+    }
+   ]
+  },
+  {
+   "id": "i_chest_back",
+   "when": {
+    "all": [
+     {
+      "fact": "complaint.chest_pain",
+      "eq": true
+     },
+     {
+      "fact": "hx.chest_pain.radiation",
+      "eq": "back"
+     }
+    ]
+   },
+   "items": [
+    {
+     "id": "cta_aorta",
+     "tier": "consider",
+     "why": "Chest pain radiating to the back: imaging if acute aortic syndrome is suspected.",
+     "sources": [
+      "aorta2022"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "i_dyspnea",
+   "when": {
+    "fact": "complaint.dyspnea",
+    "eq": true
+   },
+   "items": [
+    {
+     "id": "ecg",
+     "tier": "now",
+     "why": "Dyspnoea: ischaemia, arrhythmia, right heart strain.",
+     "sources": []
+    },
+    {
+     "id": "cxr",
+     "tier": "now",
+     "why": "Pneumothorax, consolidation, pulmonary oedema, effusion.",
+     "sources": []
+    },
+    {
+     "id": "blood_gas",
+     "tier": "soon",
+     "why": "Gas exchange and acid–base status when hypoxic or tachypnoeic.",
+     "sources": []
+    },
+    {
+     "id": "bnp",
+     "tier": "consider",
+     "why": "Supports or argues against heart failure as the cause.",
+     "sources": []
+    }
+   ]
+  },
+  {
+   "id": "i_hypox",
+   "when": {
+    "fact": "vitals.spo2",
+    "lt": 94
+   },
+   "items": [
+    {
+     "id": "blood_gas",
+     "tier": "now",
+     "why": "SpO2 below 94%: assess oxygenation, ventilation and acid–base.",
+     "sources": []
+    }
+   ]
+  },
+  {
+   "id": "i_pe_ddimer",
+   "when": {
+    "all": [
+     {
+      "fact": "score.wells_pe.total",
+      "lte": 4
+     },
+     {
+      "fact": "score.perc.label",
+      "neq": "negative"
+     }
+    ]
+   },
+   "items": [
+    {
+     "id": "d_dimer",
+     "tier": "soon",
+     "why": "PE unlikely by Wells: a negative D-dimer can exclude PE.",
+     "sources": [
+      "pe2019",
+      "wells2000"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "i_pe_perc_neg",
+   "when": {
+    "fact": "score.perc.label",
+    "eq": "negative"
+   },
+   "items": [
+    {
+     "id": "d_dimer",
+     "tier": "not_routine",
+     "why": "PERC negative in a low-suspicion patient: further PE testing not routinely needed.",
+     "sources": [
+      "perc2004"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "i_pe_likely",
+   "when": {
+    "fact": "score.wells_pe.total",
+    "gt": 4
+   },
+   "items": [
+    {
+     "id": "ctpa",
+     "tier": "now",
+     "why": "PE likely by Wells: proceed to imaging (D-dimer not used to exclude).",
+     "sources": [
+      "pe2019",
+      "wells2000"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "i_syncope",
+   "when": {
+    "fact": "complaint.syncope",
+    "eq": true
+   },
+   "items": [
+    {
+     "id": "ecg",
+     "tier": "now",
+     "why": "Syncope: initial evaluation includes a 12-lead ECG.",
+     "sources": [
+      "syncope2017"
+     ]
+    },
+    {
+     "id": "glucose_cap",
+     "tier": "now",
+     "why": "Hypoglycaemia can mimic syncope.",
+     "sources": []
+    },
+    {
+     "id": "orthostatic",
+     "tier": "soon",
+     "why": "Orthostatic hypotension as a cause.",
+     "sources": [
+      "syncope2017"
+     ]
+    },
+    {
+     "id": "cbc",
+     "tier": "consider",
+     "why": "Targeted: if bleeding or anaemia suspected (routine panels are not recommended).",
+     "sources": [
+      "syncope2017"
+     ]
+    },
+    {
+     "id": "troponin",
+     "tier": "consider",
+     "why": "Targeted: if a cardiac cause is suspected.",
+     "sources": [
+      "syncope2017"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "i_preg",
+   "when": {
+    "all": [
+     {
+      "all": [
+       {
+        "fact": "patient.sex",
+        "eq": "female"
+       },
+       {
+        "fact": "patient.age",
+        "gte": 12
+       },
+       {
+        "fact": "patient.age",
+        "lte": 55
+       }
+      ]
+     },
+     {
+      "any": [
+       {
+        "fact": "complaint.abdominal_pain",
+        "eq": true
+       },
+       {
+        "fact": "complaint.syncope",
+        "eq": true
+       },
+       {
+        "fact": "complaint.vomiting",
+        "eq": true
+       }
+      ]
+     }
+    ]
+   },
+   "items": [
+    {
+     "id": "hcg",
+     "tier": "now",
+     "why": "Woman of child-bearing age: pregnancy status changes diagnosis (ectopic) and imaging/drug choices.",
+     "sources": []
+    }
+   ]
+  },
+  {
+   "id": "i_palp",
+   "when": {
+    "fact": "complaint.palpitations",
+    "eq": true
+   },
+   "items": [
+    {
+     "id": "ecg",
+     "tier": "now",
+     "why": "Capture the rhythm, pre-excitation and QT.",
+     "sources": []
+    },
+    {
+     "id": "ue",
+     "tier": "soon",
+     "why": "Potassium and renal function.",
+     "sources": []
+    },
+    {
+     "id": "mg",
+     "tier": "soon",
+     "why": "Magnesium abnormalities provoke arrhythmia.",
+     "sources": []
+    },
+    {
+     "id": "tsh",
+     "tier": "consider",
+     "why": "Thyrotoxicosis as a trigger.",
+     "sources": []
+    },
+    {
+     "id": "cbc",
+     "tier": "consider",
+     "why": "Anaemia as a trigger.",
+     "sources": []
+    }
+   ]
+  },
+  {
+   "id": "i_fever",
+   "when": {
+    "fact": "complaint.fever",
+    "eq": true
+   },
+   "items": [
+    {
+     "id": "cbc",
+     "tier": "soon",
+     "why": "Infection work-up.",
+     "sources": []
+    },
+    {
+     "id": "crp",
+     "tier": "soon",
+     "why": "Supports infection assessment.",
+     "sources": []
+    },
+    {
+     "id": "urinalysis",
+     "tier": "soon",
+     "why": "Urinary source.",
+     "sources": []
+    }
+   ]
+  },
+  {
+   "id": "i_sepsis",
+   "when": {
+    "any": [
+     {
+      "fact": "score.qsofa.total",
+      "gte": 2
+     },
+     {
+      "fact": "score.news2.total",
+      "gte": 5
+     },
+     {
+      "all": [
+       {
+        "fact": "complaint.fever",
+        "eq": true
+       },
+       {
+        "fact": "vitals.sbp",
+        "lte": 90
+       }
+      ]
+     }
+    ]
+   },
+   "items": [
+    {
+     "id": "lactate",
+     "tier": "now",
+     "why": "Possible sepsis: lactate guides resuscitation.",
+     "sources": [
+      "ssc2021"
+     ]
+    },
+    {
+     "id": "blood_cultures",
+     "tier": "now",
+     "why": "Possible sepsis: cultures before antimicrobials when this does not delay them.",
+     "sources": [
+      "ssc2021"
+     ]
+    },
+    {
+     "id": "ue",
+     "tier": "now",
+     "why": "Organ dysfunction assessment.",
+     "sources": []
+    }
+   ]
+  },
+  {
+   "id": "i_resp_infection",
+   "when": {
+    "all": [
+     {
+      "any": [
+       {
+        "fact": "complaint.dyspnea",
+        "eq": true
+       },
+       {
+        "fact": "complaint.fever",
+        "eq": true
+       }
+      ]
+     },
+     {
+      "fact": "sx.cough",
+      "eq": "yes"
+     }
+    ]
+   },
+   "items": [
+    {
+     "id": "cxr",
+     "tier": "soon",
+     "why": "Cough with fever or dyspnoea: pneumonia.",
+     "sources": []
+    },
+    {
+     "id": "ue",
+     "tier": "soon",
+     "why": "Urea is needed for CURB-65.",
+     "sources": [
+      "curb2003"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "i_meningism",
+   "when": {
+    "all": [
+     {
+      "fact": "sx.neck_stiffness",
+      "eq": "yes"
+     },
+     {
+      "any": [
+       {
+        "fact": "complaint.fever",
+        "eq": true
+       },
+       {
+        "fact": "sx.fever",
+        "eq": "yes"
+       }
+      ]
+     }
+    ]
+   },
+   "items": [
+    {
+     "id": "blood_cultures",
+     "tier": "now",
+     "why": "Fever with neck stiffness: possible meningitis.",
+     "sources": []
+    },
+    {
+     "id": "lp",
+     "tier": "consider",
+     "why": "CSF analysis if no contraindication (CT first when indicated).",
+     "sources": []
+    }
+   ]
+  },
+  {
+   "id": "i_vomit",
+   "when": {
+    "fact": "complaint.vomiting",
+    "eq": true
+   },
+   "items": [
+    {
+     "id": "ue",
+     "tier": "soon",
+     "why": "Dehydration, electrolytes and renal function.",
+     "sources": []
+    },
+    {
+     "id": "glucose_cap",
+     "tier": "soon",
+     "why": "Hyper- or hypoglycaemia.",
+     "sources": []
+    }
+   ]
+  },
+  {
+   "id": "i_vomit_dm",
+   "when": {
+    "all": [
+     {
+      "fact": "complaint.vomiting",
+      "eq": true
+     },
+     {
+      "fact": "pmh.diabetes",
+      "eq": "yes"
+     }
+    ]
+   },
+   "items": [
+    {
+     "id": "ketones",
+     "tier": "now",
+     "why": "Vomiting in diabetes: exclude ketoacidosis.",
+     "sources": []
+    },
+    {
+     "id": "blood_gas",
+     "tier": "now",
+     "why": "Acid–base status if ketoacidosis suspected.",
+     "sources": []
+    }
+   ]
+  },
+  {
+   "id": "i_ugib",
+   "when": {
+    "fact": "sx.vomiting_blood",
+    "eq": "yes"
+   },
+   "items": [
+    {
+     "id": "cbc",
+     "tier": "now",
+     "why": "Haematemesis: haemoglobin.",
+     "sources": []
+    },
+    {
+     "id": "group_screen",
+     "tier": "now",
+     "why": "Prepare for transfusion.",
+     "sources": []
+    },
+    {
+     "id": "coag",
+     "tier": "soon",
+     "why": "Coagulopathy and anticoagulant effect.",
+     "sources": []
+    },
+    {
+     "id": "ue",
+     "tier": "now",
+     "why": "Urea is needed for the Glasgow-Blatchford score.",
+     "sources": [
+      "gbs2000"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "i_abdo",
+   "when": {
+    "fact": "complaint.abdominal_pain",
+    "eq": true
+   },
+   "items": [
+    {
+     "id": "cbc",
+     "tier": "soon",
+     "why": "Infection or bleeding.",
+     "sources": []
+    },
+    {
+     "id": "lipase",
+     "tier": "soon",
+     "why": "Pancreatitis.",
+     "sources": []
+    },
+    {
+     "id": "urinalysis",
+     "tier": "soon",
+     "why": "Urinary tract infection or stones.",
+     "sources": []
+    },
+    {
+     "id": "lft",
+     "tier": "consider",
+     "why": "Biliary or hepatic cause.",
+     "sources": []
+    }
+   ]
+  },
+  {
+   "id": "i_abdo_old",
+   "when": {
+    "all": [
+     {
+      "fact": "complaint.abdominal_pain",
+      "eq": true
+     },
+     {
+      "fact": "patient.age",
+      "gte": 50
+     }
+    ]
+   },
+   "items": [
+    {
+     "id": "ecg",
+     "tier": "soon",
+     "why": "Older patients: myocardial ischaemia can present as upper abdominal pain.",
+     "sources": []
+    },
+    {
+     "id": "pocus_aorta",
+     "tier": "consider",
+     "why": "Exclude abdominal aortic aneurysm.",
+     "sources": [
+      "aorta2022"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "i_headache_sah",
+   "when": {
+    "any": [
+     {
+      "fact": "score.ottawa_sah.label",
+      "eq": "positive"
+     },
+     {
+      "fact": "hx.headache.thunderclap",
+      "eq": "yes"
+     },
+     {
+      "fact": "sx.focal_weakness",
+      "eq": "yes"
+     }
+    ]
+   },
+   "items": [
+    {
+     "id": "ct_head",
+     "tier": "now",
+     "why": "Possible SAH or other intracranial cause.",
+     "sources": [
+      "ottawasah2013"
+     ]
+    },
+    {
+     "id": "lp",
+     "tier": "consider",
+     "why": "If CT is negative and SAH is still suspected (timing-dependent).",
+     "sources": []
+    }
+   ]
+  },
+  {
+   "id": "i_headache_old",
+   "when": {
+    "all": [
+     {
+      "fact": "complaint.headache",
+      "eq": true
+     },
+     {
+      "fact": "patient.age",
+      "gte": 50
+     }
+    ]
+   },
+   "items": [
+    {
+     "id": "esr",
+     "tier": "consider",
+     "why": "New headache over 50: giant cell arteritis.",
+     "sources": []
+    },
+    {
+     "id": "crp",
+     "tier": "consider",
+     "why": "New headache over 50: giant cell arteritis.",
+     "sources": []
+    }
+   ]
+  },
+  {
+   "id": "i_ams",
+   "when": {
+    "fact": "complaint.altered_mental_status",
+    "eq": true
+   },
+   "items": [
+    {
+     "id": "glucose_cap",
+     "tier": "now",
+     "why": "Hypoglycaemia is rapidly reversible.",
+     "sources": []
+    },
+    {
+     "id": "blood_gas",
+     "tier": "now",
+     "why": "Hypoxia, hypercapnia, acid–base and electrolytes.",
+     "sources": []
+    },
+    {
+     "id": "ue",
+     "tier": "soon",
+     "why": "Sodium, uraemia.",
+     "sources": []
+    },
+    {
+     "id": "ecg",
+     "tier": "soon",
+     "why": "Arrhythmia, toxic effects.",
+     "sources": []
+    }
+   ]
+  },
+  {
+   "id": "i_ams_head",
+   "when": {
+    "any": [
+     {
+      "fact": "hx.altered_mental_status.head_injury",
+      "eq": "yes"
+     },
+     {
+      "all": [
+       {
+        "fact": "complaint.altered_mental_status",
+        "eq": true
+       },
+       {
+        "fact": "sx.focal_weakness",
+        "eq": "yes"
+       }
+      ]
+     }
+    ]
+   },
+   "items": [
+    {
+     "id": "ct_head",
+     "tier": "now",
+     "why": "Altered consciousness with head injury or focal deficit.",
+     "sources": [
+      "cthead2001"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "i_ams_tox",
+   "when": {
+    "fact": "hx.altered_mental_status.substances",
+    "eq": "yes"
+   },
+   "items": [
+    {
+     "id": "tox_levels",
+     "tier": "soon",
+     "why": "Possible overdose: co-ingestion is common and may be silent.",
+     "sources": []
+    }
+   ]
+  },
+  {
+   "id": "i_back_cauda",
+   "when": {
+    "any": [
+     {
+      "fact": "sx.leg_weakness_numbness",
+      "eq": "yes"
+     },
+     {
+      "fact": "sx.bladder_bowel",
+      "eq": "yes"
+     }
+    ]
+   },
+   "items": [
+    {
+     "id": "mri_spine",
+     "tier": "now",
+     "why": "Neurological deficit or sphincter disturbance: possible cord or cauda equina compression.",
+     "sources": []
+    }
+   ]
+  },
+  {
+   "id": "i_back_old",
+   "when": {
+    "all": [
+     {
+      "fact": "complaint.back_pain",
+      "eq": true
+     },
+     {
+      "fact": "patient.age",
+      "gte": 50
+     }
+    ]
+   },
+   "items": [
+    {
+     "id": "pocus_aorta",
+     "tier": "consider",
+     "why": "Back pain over 50: exclude aortic aneurysm.",
+     "sources": [
+      "aorta2022"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "i_back_simple",
+   "when": {
+    "all": [
+     {
+      "fact": "complaint.back_pain",
+      "eq": true
+     },
+     {
+      "fact": "sx.leg_weakness_numbness",
+      "eq": "no"
+     },
+     {
+      "fact": "sx.bladder_bowel",
+      "eq": "no"
+     },
+     {
+      "fact": "pmh.cancer",
+      "eq": "no"
+     }
+    ]
+   },
+   "items": [
+    {
+     "id": "spine_imaging",
+     "tier": "not_routine",
+     "why": "No red flags recorded: imaging is not routinely indicated for non-specific back pain.",
+     "sources": []
+    }
+   ]
+  },
+  {
+   "id": "i_dvt",
+   "when": {
+    "fact": "score.wells_dvt.total",
+    "gte": 2
+   },
+   "items": [
+    {
+     "id": "us_dvt",
+     "tier": "now",
+     "why": "DVT likely by Wells: compression ultrasound.",
+     "sources": [
+      "wellsdvt2003"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "i_dvt_unlikely",
+   "when": {
+    "fact": "score.wells_dvt.total",
+    "lt": 2
+   },
+   "items": [
+    {
+     "id": "d_dimer",
+     "tier": "soon",
+     "why": "DVT unlikely by Wells: a negative D-dimer can exclude DVT.",
+     "sources": [
+      "wellsdvt2003"
+     ]
+    }
+   ]
+  }
+ ]
 }

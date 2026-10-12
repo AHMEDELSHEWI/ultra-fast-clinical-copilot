@@ -6,6 +6,8 @@
 //  * Empty core sections say "Not documented."
 
 import { calcMap, calcGcs, calcBmi, formatBp } from './vitals.js';
+import { FACTS } from '../content/facts.js';
+import { relevantScores } from './workup.js';
 
 export const joinList = (items) => {
   const a = items.filter(Boolean);
@@ -45,6 +47,16 @@ export const O2_OPTIONS = Object.freeze([
 function optionDoc(q, value) {
   return q.options?.find((o) => o.v === value);
 }
+
+/** Shared facts (FACTS) of a section that are NOT already rendered by an interview question. */
+function sharedFacts(store, pack, section) {
+  const covered = new Set(pack.questions.map((q) => q.fact));
+  return Object.entries(FACTS).filter(([k, d]) => d.section === section && !covered.has(k))
+    .map(([k, d]) => ({ key: k, def: d, value: store.getFact(k), unknown: store.isUnknown(k) }))
+    .filter((x) => x.value !== undefined || x.unknown);
+}
+const choiceDoc = (def, v) => def.options?.find((o) => o.v === v)?.doc;
+const numDoc = (def, v) => `${def.label} ${v}${def.unit === '°' ? '°' : ` ${def.unit}`}`;
 
 // ---------- individual sections ----------
 function patientSection(store) {
@@ -112,6 +124,9 @@ function hpiSection(store, pack) {
     if (v === 'yes') assoc.push(q.noun);
     else if (v === 'no') denied.push(q.noun);
   }
+  for (const x of sharedFacts(store, pack, 'sx')) {
+    if (x.value === 'yes') assoc.push(x.def.noun); else if (x.value === 'no') denied.push(x.def.noun);
+  }
   const lines = [];
   active.forEach((key, i) => {
     const s = complaintSentence(store, pack, key, { primary: i === 0, assocItems: assoc });
@@ -151,6 +166,19 @@ function historySection(store, pack) {
       if (v !== undefined) lines.push(`${optionDoc(q, v)?.doc ?? ''}.`);
       else if (unknown) lines.push('Smoking status: unknown.');
     }
+  }
+  for (const x of sharedFacts(store, pack, 'pmh')) {
+    if (x.value === 'yes') pmhYes.push(x.def.noun); else if (x.value === 'no') pmhNo.push(x.def.noun);
+    else lines.push(`History of ${x.def.noun}: unknown.`);
+  }
+  for (const x of sharedFacts(store, pack, 'family')) {
+    lines.push(x.value === 'yes' ? `Family history of ${x.def.noun}.` : x.value === 'no' ? `No family history of ${x.def.noun}.` : `Family history of ${x.def.noun}: unknown.`);
+  }
+  for (const x of sharedFacts(store, pack, 'meds')) {
+    lines.push(x.value === 'yes' ? `Takes ${x.def.noun}.` : x.value === 'no' ? `Not on ${x.def.noun}.` : `Use of ${x.def.noun}: unknown.`);
+  }
+  for (const x of sharedFacts(store, pack, 'social')) {
+    lines.push(x.value === 'yes' ? `${cap(x.def.noun)}.` : x.value === 'no' ? `No ${x.def.noun}.` : `${cap(x.def.noun)}: unknown.`);
   }
   const pmh = [];
   if (pmhYes.length) pmh.push(`Past medical history: ${joinList(pmhYes)}.`);
@@ -202,15 +230,61 @@ function examSection(store, pack) {
     }
     if (found.length) lines.push(`${sys.title.en}: ${joinList(found)}.`);
   }
+  const pos = []; const neg = [];
+  for (const x of sharedFacts(store, pack, 'exam')) {
+    if (x.def.type === 'choice') { const d = choiceDoc(x.def, x.value); lines.push(x.unknown ? `${x.def.label}: not assessed.` : `${x.def.label}: ${d}.`); }
+    else if (x.value === 'yes') pos.push(x.def.noun); else if (x.value === 'no') neg.push(x.def.noun);
+  }
+  if (pos.length) lines.push(`${cap(joinList(pos))} noted.`);
+  if (neg.length) lines.push(`No ${joinList(neg)}.`);
   return lines;
 }
 
-function assessmentSection(store) {
+function resultsSection(store, pack) {
+  const lab = []; const ecg = [];
+  for (const x of sharedFacts(store, pack, 'lab')) {
+    if (x.unknown) lab.push(`${x.def.label}: result not available`);
+    else if (x.def.type === 'number') lab.push(numDoc(x.def, x.value));
+    else lab.push(`${x.def.label} ${choiceDoc(x.def, x.value)}`);
+  }
+  for (const x of sharedFacts(store, pack, 'ecg')) {
+    if (x.unknown) ecg.push(`${x.def.label ?? x.def.noun}: not available`);
+    else if (x.def.type === 'number') ecg.push(numDoc(x.def, x.value));
+    else if (x.def.type === 'choice') ecg.push(x.key === 'ecg.heart_cat' ? choiceDoc(x.def, x.value) : `${x.def.label.toLowerCase()}: ${choiceDoc(x.def, x.value)}`);
+    else ecg.push(x.value === 'yes' ? x.def.noun : `no ${x.def.noun}`);
+  }
+  const lines = [];
+  if (lab.length) lines.push(`Laboratory: ${lab.join('; ')}.`);
+  if (ecg.length) lines.push(`ECG: ${ecg.join('; ')}.`);
+  return lines;
+}
+
+function investigationsSection(store, pack) {
+  const req = (pack.investigationCatalog ?? []).filter((c) => store.getFact(`inv.${c.id}`) === 'requested').map((c) => c.doc);
+  return req.length ? [`Requested: ${joinList(req)}.`] : [];
+}
+
+function scoresSection(store, pack) {
+  return relevantScores(pack, store).filter((s) => s.result.complete).map((s) => s.result.text);
+}
+
+function judgementLines(store, pack) {
+  const out = [];
+  for (const x of sharedFacts(store, pack, 'judgement')) {
+    if (x.unknown) continue;
+    if (x.def.type === 'choice') out.push(`${x.def.label}: ${choiceDoc(x.def, x.value)}.`);
+    else out.push(`Clinician judgement — ${x.def.noun}: ${x.value === 'yes' ? 'yes' : 'no'}.`);
+  }
+  return out;
+}
+
+function assessmentSection(store, pack) {
   const lines = [];
   const imp = store.getFact('assessment.impression');
   const dx = store.getFact('assessment.diagnosis');
   if (imp) lines.push(`Clinical impression: ${imp}`);
   if (dx) lines.push(`Working diagnosis (clinician-entered): ${dx}`);
+  lines.push(...judgementLines(store, pack));
   const considered = Object.values(store.state.facts)
     .filter((f) => f.key.startsWith('dx.consider.') && f.status === 'active' && typeof f.value === 'string')
     .map((f) => f.value);
@@ -252,7 +326,8 @@ function correctionsSection(store, tz) {
 // ---------- public API ----------
 export const SECTION_TITLES = Object.freeze({
   patient: 'PATIENT', cc: 'CHIEF COMPLAINT', hpi: 'HISTORY OF PRESENTING ILLNESS', history: 'RELEVANT HISTORY',
-  vitals: 'VITAL SIGNS', exam: 'EXAMINATION', assessment: 'ASSESSMENT', treatment: 'TREATMENT GIVEN',
+  vitals: 'VITAL SIGNS', exam: 'EXAMINATION', investigations: 'INVESTIGATIONS', results: 'RESULTS', scores: 'CLINICAL SCORES',
+  assessment: 'ASSESSMENT', treatment: 'TREATMENT GIVEN', reassessment: 'REASSESSMENT',
   disposition: 'DISPOSITION', timeline: 'TIMELINE', corrections: 'DOCUMENTATION CORRECTIONS',
 });
 const CORE = new Set(['patient', 'cc', 'hpi', 'vitals', 'exam']);
@@ -265,7 +340,11 @@ export function buildSections(store, pack, { tz } = {}) {
     history: historySection(store, pack),
     vitals: vitalsSection(store),
     exam: examSection(store, pack),
-    assessment: assessmentSection(store),
+    investigations: investigationsSection(store, pack),
+    results: resultsSection(store, pack),
+    scores: scoresSection(store, pack),
+    assessment: assessmentSection(store, pack),
+    reassessment: eventLines(store, 'reassessment', tz),
     treatment: eventLines(store, 'treatment', tz),
     disposition: dispositionSection(store),
     timeline: eventLines(store, null, tz),

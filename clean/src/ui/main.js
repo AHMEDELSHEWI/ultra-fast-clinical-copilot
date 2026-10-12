@@ -1,41 +1,49 @@
-// UI shell. Vanilla JS, no framework. All clinical logic lives in ../core (tested without a browser).
+// UI shell. Vanilla JS, no framework. All clinical logic lives in ../core and ../content (tested without a browser).
 import pack from '../content/pack.json';
+import { FACTS } from '../content/facts.js';
+import { SCORES, SCORE_BY_ID } from '../content/scores.js';
 import { reason, considerKey, citationFor } from '../core/reasoning.js';
 import { CaseStore, createCase } from '../core/state.js';
 import { Persistence, IndexedDbAdapter, MemoryAdapter, attachAutosave, APP_VERSION } from '../core/persistence.js';
 import { nextQuestion, progress, missingInformation, applicableQuestions } from '../core/questions.js';
 import { deriveAlerts } from '../core/alerts.js';
-import { calcMap, calcShockIndex, calcBmi, calcGcs, validateVital, checkBpPair, GCS_OPTIONS, UNITS } from '../core/vitals.js';
-import { buildSections, O2_OPTIONS, formatTime, formatDuration } from '../core/documentation.js';
+import { calcMap, calcShockIndex, calcBmi, calcGcs, validateVital, checkBpPair, GCS_OPTIONS, UNITS, LIMITS } from '../core/vitals.js';
+import { buildSections, renderCompleteCase, O2_OPTIONS, formatTime, formatDuration } from '../core/documentation.js';
 import { copyText } from '../core/copy.js';
 import { documentationCheck } from '../core/checks.js';
 import { buildDemoStore } from '../core/demo.js';
+import { relevantScores, evaluateById, nextScoreInput, pendingHistoryInputs, askSpec, readingsOf } from '../core/workup.js';
+import { scoreText } from '../core/scoreEngine.js';
+import { suggestInvestigations, invKey } from '../core/investigations.js';
+import { icon, tile, COMPLAINT_ICON } from './icons.js';
 import { makeT } from './i18n.js';
 
-// ---------------------------------------------------------------- helpers
+// ================================================================ state & helpers
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ui = {
-  screen: 'home', tab: 'interview', lang: 'en', search: '', editQ: null, pendingText: null, evType: 'treatment',
+  screen: 'home', tab: 'now', lang: 'en', search: '', editKey: null, pendingText: null, evType: 'treatment', noteMode: 'note',
   intake: { age: '', sex: null, text: '' }, cases: [], lastId: null, custom: { n: '', unit: 'hour' }, storageOk: true,
+  sheet: null, librarySearch: '', globalSearch: '',
 };
 try { ui.lang = localStorage.getItem('ufc-lang') === 'ar' ? 'ar' : 'en'; } catch { /* storage blocked */ }
 const t = makeT(() => ui.lang);
 const L = (o) => (o ? (ui.lang === 'ar' ? o.ar ?? o.en : o.en) : '');
 
 let store = null;
+let scratch = null; // calculator mode store (never saved)
 let persistence = null;
 let autosave = null;
 let unsub = null;
 
-const STOMACH = '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M26 6c0 8-8 8-8 18 0 14 6 18 14 18 8 0 12-5 16-5 5 0 8 4 8 10s-5 11-14 11c-14 0-30-8-30-26 0-10 6-14 6-20z" fill="#ffb4a2" stroke="#d9480f" stroke-width="3" stroke-linejoin="round"/></svg>';
-const ICONS = { heart: '🫀', lungs: '🫁', brain: '🧠', stomach: STOMACH, shield: '🛡️', syringe: '💉', pregnancy: '🤰', syncope: '😵', thermometer: '🌡️', bone: '🦴' };
-const icon = (k) => ICONS[k] ?? '🩺';
 const complaintByKey = (k) => pack.complaints.find((c) => c.key === k);
 const examFindings = pack.exam.flatMap((s) => s.findings);
 const isFinal = () => store?.state.status === 'final';
+const S = () => (ui.sheet?.scratch ? scratch : store); // store the current sheet acts on
+const cTile = (c, size = 'md') => { const [n, tone] = COMPLAINT_ICON[c?.icon] ?? ['stethoscope', 'blue']; return tile(n, tone, size); };
+const LEVEL = { danger: ['critical', 'alert', 'red'], warn: ['important', 'alert', 'orange'], caution: ['cautionL', 'info', 'yellow'], info: ['infoL', 'info', 'blue'], ok: ['infoL', 'check', 'green'] };
 
-// ---------------------------------------------------------------- feedback
+// ================================================================ feedback
 function toast(msg, err = false) {
   const el = $('#toast');
   el.innerHTML = `<div class="toast ${err ? 'err' : ''}" role="status">${esc(msg)}</div>`;
@@ -43,18 +51,18 @@ function toast(msg, err = false) {
   toast.t = setTimeout(() => { el.innerHTML = ''; }, 2200);
 }
 
-/** Modal with optional fields. Resolves { action, values } or null. */
+/** Promise-based dialog with optional fields. Resolves { action, values } or null. */
 function ask({ title, body = '', fields = [], actions }) {
   return new Promise((resolve) => {
     const host = $('#modal');
-    const render = (error = '') => {
-      host.innerHTML = `<div class="modal-bg" data-modal-bg><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}">
-        <h3>${esc(title)}</h3>${body}
+    const draw = (error = '') => {
+      host.innerHTML = `<div class="modal-bg" data-modal-bg><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="grab"></div>
+        <h3 class="mt">${esc(title)}</h3><div class="stack">${body}
         ${fields.map((f) => `<div class="field"><label for="mf-${f.name}">${esc(f.label)}</label>${f.type === 'textarea'
           ? `<textarea id="mf-${f.name}" name="${f.name}">${esc(f.value ?? '')}</textarea>`
           : `<input id="mf-${f.name}" name="${f.name}" type="${f.type ?? 'text'}" ${f.type === 'number' ? 'step="any" inputmode="decimal"' : ''} value="${esc(f.value ?? '')}">`}</div>`).join('')}
-        ${error ? `<div class="alert danger" role="alert">${esc(error)}</div>` : ''}
-        <div class="stack">${actions.map((a) => `<button class="btn block ${a.kind ?? ''}" data-modal-act="${a.id}">${esc(a.label)}</button>`).join('')}</div>
+        ${error ? `<div class="alert danger" role="alert">${icon('alert')}<span>${esc(error)}</span></div>` : ''}
+        ${actions.map((a) => `<button class="btn block ${a.kind ?? ''}" data-modal-act="${a.id}">${esc(a.label)}</button>`).join('')}</div>
       </div></div>`;
       const first = host.querySelector('input,textarea');
       if (first) first.focus();
@@ -64,49 +72,45 @@ function ask({ title, body = '', fields = [], actions }) {
         const act = actions.find((a) => a.id === b.dataset.modalAct);
         const values = {};
         host.querySelectorAll('input,textarea').forEach((i) => { values[i.name] = i.value.trim(); });
-        if (act.needs) {
-          const missing = act.needs.find((n) => !values[n]);
-          if (missing) { render(t('reasonRequired')); host.querySelectorAll('input,textarea').forEach((i) => { if (values[i.name] !== undefined) i.value = values[i.name]; }); return; }
+        if (act.needs && act.needs.some((n) => !values[n])) {
+          draw(t('reasonRequired'));
+          host.querySelectorAll('input,textarea').forEach((i) => { if (values[i.name] !== undefined) i.value = values[i.name]; });
+          return;
         }
         host.innerHTML = '';
         resolve({ action: act.id, values });
       };
     };
-    render();
+    draw();
   });
 }
 
 function fail(err) {
   console.error(err);
-  ask({
-    title: t('somethingWrong'),
-    body: `<p>${esc(t('casePreserved'))}</p>`,
-    actions: [{ id: 'retry', label: t('retry'), kind: 'primary' }, { id: 'restore', label: t('restoreCase') }],
-  }).then(async (r) => {
-    if (r?.action === 'restore') {
-      const last = await persistence?.loadLast().catch(() => null);
-      if (last) adopt(new CaseStore(last), 'case');
-    }
-    render();
-  });
+  ask({ title: t('somethingWrong'), body: `<p>${esc(t('casePreserved'))}</p>`,
+    actions: [{ id: 'retry', label: t('retry'), kind: 'primary' }, { id: 'restore', label: t('restoreCase') }] })
+    .then(async (r) => {
+      if (r?.action === 'restore') { const last = await persistence?.loadLast().catch(() => null); if (last) adopt(new CaseStore(last), 'case'); }
+      ui.sheet = null; render();
+    });
 }
 
+async function writeClipboard(text) {
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; } catch {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { ok = document.execCommand('copy'); } catch { ok = false; }
+    ta.remove();
+  }
+  toast(ok ? t('copied') : t('copyFailed'), !ok);
+}
 async function copy(target) {
-  try {
-    const text = copyText(store, pack, target);
-    let ok = false;
-    try { await navigator.clipboard.writeText(text); ok = true; } catch {
-      const ta = document.createElement('textarea');
-      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
-      document.body.appendChild(ta); ta.select();
-      try { ok = document.execCommand('copy'); } catch { ok = false; }
-      ta.remove();
-    }
-    toast(ok ? t('copied') : t('copyFailed'), !ok);
-  } catch (e) { toast(e.message, true); }
+  try { await writeClipboard(copyText(store, pack, target)); } catch (e) { toast(e.message, true); }
 }
 
-// ---------------------------------------------------------------- case lifecycle
+// ================================================================ case lifecycle
 function adopt(newStore, screen) {
   if (autosave) autosave.flush();
   if (unsub) unsub();
@@ -114,7 +118,7 @@ function adopt(newStore, screen) {
   store = newStore;
   autosave = attachAutosave(store, persistence, { onError: () => { ui.storageOk = false; toast('Could not save to this device.', true); } });
   unsub = store.subscribe(() => render());
-  ui.screen = screen; ui.tab = 'interview'; ui.editQ = null; ui.pendingText = null; ui.search = '';
+  ui.screen = screen; ui.tab = 'now'; ui.editKey = null; ui.pendingText = null; ui.search = ''; ui.sheet = null; ui.noteMode = 'note';
   autosave.flush();
   render();
 }
@@ -122,51 +126,177 @@ async function refreshCases() {
   try { ui.cases = await persistence.listCases(); ui.lastId = await persistence.lastCaseId(); } catch { ui.cases = []; }
 }
 
-// ---------------------------------------------------------------- views
-function topBar() {
-  const age = store?.getFact('patient.age');
-  const sex = store?.getFact('patient.sex');
-  const chip = store && ui.screen !== 'home' ? `<span class="sub">
-      <button class="btn small" data-act="edit-demo" data-kind="age" ${isFinal() ? 'disabled' : ''}>${esc(typeof age === 'number' ? `${age} y` : t('age'))}</button>
-      <button class="btn small" data-act="edit-demo" data-kind="sex" ${isFinal() ? 'disabled' : ''}>${esc(sex ? t(sex) : t('sex'))}</button></span>` : '';
-  const badges = store?.state.demo ? `<span class="badge demo">${t('demoBadge')}</span>` : '';
-  const fin = isFinal() ? `<span class="badge final">${t('finalBadge')}</span>` : '';
-  return `<header class="top">
-    <button class="btn small" data-act="home" aria-label="Home">🏠</button>
-    <h1>${esc(ui.screen === 'home' ? t('app') : t('appShort'))} ${badges} ${fin}</h1>${chip}
-    <button class="btn small" data-act="lang">${esc(t('language'))}</button></header>`;
+// ================================================================ question rendering (one question per screen)
+/** Resolve how to ask a fact key: interview question, shared fact or vital. */
+function specFor(key) { return askSpec(pack, key); }
+
+function displayValue(key, v) {
+  if (v === undefined || v === null) return '—';
+  const sp = specFor(key);
+  const def = sp.kind === 'pack' ? sp.question : sp.def;
+  if (!def) return String(v);
+  if (def.type === 'yesno') return t(v);
+  if (def.type === 'choice') return L(def.options.find((o) => o.v === v)) || String(v);
+  if (def.type === 'duration') return formatDuration(v);
+  return `${v}${def.unit ? ` ${def.unit}` : ''}`;
 }
 
+function questionHtml(key, { st = store, note = '' } = {}) {
+  const sp = specFor(key);
+  const def = sp.kind === 'pack' ? sp.question : sp.def;
+  if (!def) return `<p class="muted">${esc(key)}</p>`;
+  const cur = st.getFact(key);
+  const ROLE_TILE = { allergy: ['shield', 'red'], meds: ['pill', 'purple'], preg: ['pregnancy', 'pink'], pmh: ['clipboard', 'slate'], social: ['user', 'slate'] };
+  const roleTile = sp.kind === 'pack' ? ROLE_TILE[def.role] : null;
+  const c = sp.kind === 'pack' && !roleTile ? complaintByKey(def.complaints.find((k) => store?.activeComplaints().includes(k)) ?? def.complaints[0]) : null;
+  const sectionTile = { pmh: ['clipboard', 'slate'], family: ['team', 'slate'], meds: ['pill', 'purple'], social: ['user', 'slate'], sx: ['stethoscope', 'blue'],
+    exam: ['stethoscope', 'teal'], judgement: ['bulb', 'purple'], lab: ['flask', 'teal'], ecg: ['ecg', 'red'], vitals: ['activity', 'blue'] }[def.section] ?? null;
+  const head = `<div class="qhead">${roleTile ? tile(roleTile[0], roleTile[1], 'lg') : c ? cTile(c, 'lg') : sectionTile ? tile(sectionTile[0], sectionTile[1], 'lg') : tile('stethoscope', 'blue', 'lg')}
+    <div class="grow"><div class="q">${esc(L(def.prompt))}</div>${note ? `<div class="qsub">${note}</div>` : ''}</div></div>`;
+  let body = '';
+  if (def.type === 'yesno') {
+    body = `<div class="answers two">
+      <button class="opt yes ${cur === 'yes' ? 'on' : ''}" data-act="answer" data-key="${esc(key)}" data-v="yes">${icon('check')}${esc(t('yes'))}</button>
+      <button class="opt no ${cur === 'no' ? 'on' : ''}" data-act="answer" data-key="${esc(key)}" data-v="no">${icon('x')}${esc(t('no'))}</button></div>`;
+  } else if (def.type === 'choice') {
+    if (ui.pendingText?.key === key) {
+      const o = def.options[ui.pendingText.i];
+      body = `<div class="field"><label for="ptext">${esc(L(o.textPrompt))}</label><input id="ptext" type="text" data-bind="ptext" value="${esc(ui.pendingText.text ?? '')}"></div>
+        <button class="btn primary block" data-act="answer-text" data-key="${esc(key)}">${esc(t('save'))}</button>`;
+    } else {
+      body = `<div class="answers">${def.options.map((o, i) => `<button class="opt ${cur === o.v ? 'on' : ''}" data-act="answer" data-key="${esc(key)}" data-i="${i}">${esc(L(o))}</button>`).join('')}</div>`;
+    }
+  } else if (def.type === 'scale') {
+    const n = []; for (let i = def.min; i <= def.max; i += 1) n.push(i);
+    body = `<div class="scale">${n.map((i) => `<button class="opt ${cur === i ? 'on' : ''}" data-act="answer" data-key="${esc(key)}" data-v="${i}">${i}</button>`).join('')}</div>`;
+  } else if (def.type === 'duration') {
+    body = `<div class="answers">${def.presets.map((p) => `<button class="opt" data-act="answer-duration" data-key="${esc(key)}" data-n="${p.n}" data-unit="${p.unit}">${esc(formatDuration(p))}</button>`).join('')}</div>
+      <div class="card flat tight"><div class="row"><input type="number" step="any" inputmode="decimal" style="width:110px" data-bind="cn" value="${esc(ui.custom.n)}" aria-label="${esc(t('custom'))}">
+      <div class="seg grow">${['min', 'hour', 'day', 'week'].map((u) => `<button class="${ui.custom.unit === u ? 'on' : ''}" data-act="custom-unit" data-unit="${u}">${esc(t({ min: 'minutes', hour: 'hours', day: 'days', week: 'weeks' }[u]))}</button>`).join('')}</div>
+      <button class="btn small primary" data-act="answer-duration" data-key="${esc(key)}" data-custom="1">${esc(t('set'))}</button></div></div>`;
+  } else if (def.type === 'number') {
+    body = `<div class="numrow"><input id="num-input" type="number" step="any" inputmode="decimal" value="${esc(cur ?? '')}" data-enter="answer-num" data-key="${esc(key)}" aria-label="${esc(L(def.prompt))}">
+      <span class="unit">${esc(def.unit ?? '')}</span></div>
+      <button class="btn primary block" data-act="answer-num" data-key="${esc(key)}">${icon('check')}${esc(t('save'))}</button>`;
+  }
+  const skip = st.isAnswered(key) ? '' : `<button class="btn ghost block" data-act="unknown-q" data-key="${esc(key)}">${esc(t('skipUnknown'))}</button>`;
+  return `<div class="qwrap">${head}${body}${skip}</div>`;
+}
+
+// ================================================================ shared fragments
+function alertHtml(a) {
+  const [lk, ic] = LEVEL[a.level] ?? LEVEL.info;
+  return `<div class="alert ${a.level === 'danger' ? 'danger' : a.level === 'warn' ? 'warn' : a.level === 'caution' ? 'caution' : 'info'}">${icon(ic)}
+    <div><span class="t"><span class="lvl"><span>${esc(t(lk))}</span></span> ${esc(a.text)}</span>${a.basis ? `<small>${esc(a.basis)}</small>` : ''}</div></div>`;
+}
+const srcList = (ids) => (ids?.length ? `<div class="src">${ids.map((id) => esc(citationFor(pack, id) ?? id)).join('<br>')}</div>` : `<div class="src">${esc(t('noSourceYet'))}</div>`);
+const pillFor = (res) => {
+  if (!res.applicable) return `<span class="pill muted">${esc(t('notApplicable'))}</span>`;
+  if (!res.complete) return `<span class="pill caution">${res.missing.length + res.unknown.length} ${esc(t('itemsNeeded'))}</span>`;
+  const lv = res.result.level === 'danger' ? 'danger' : res.result.level === 'warn' ? 'warn' : res.result.level === 'caution' ? 'caution' : 'ok';
+  const total = res.total === null || res.total === undefined ? '' : `${Number.isInteger(res.total) ? res.total : res.total.toFixed(1)} · `;
+  return `<span class="pill ${lv}">${esc(total)}${esc(res.result.label)}</span>`;
+};
+
+function topBar() {
+  const inCase = store && ui.screen !== 'home' && ui.screen !== 'library';
+  const age = store?.getFact('patient.age');
+  const sex = store?.getFact('patient.sex');
+  const pt = inCase ? `<div class="pt">
+      <button class="chip blue" data-act="edit-demo" data-kind="age" ${isFinal() ? 'disabled' : ''}>${icon('user')}${esc(typeof age === 'number' ? `${age} y` : t('age'))}</button>
+      <button class="chip blue" data-act="edit-demo" data-kind="sex" ${isFinal() ? 'disabled' : ''}>${esc(sex ? t(sex) : t('sex'))}</button>
+      ${store.state.demo ? `<span class="badge demo">${t('demoBadge')}</span>` : ''}${isFinal() ? `<span class="badge final">${t('finalBadge')}</span>` : ''}</div>` : '';
+  return `<header class="top"><div class="top-in">
+    <button class="brand" data-act="home" aria-label="Home"><span class="mark">${icon('pulse')}</span>
+      <span class="${inCase ? 'hide-sm' : ''}"><b>${esc(t('appShort'))}</b><small>${esc(t('brandSub'))}</small></span></button>
+    <div class="grow">${pt}</div>
+    <button class="iconbtn" data-act="open-search" aria-label="${esc(t('searchAll'))}">${icon('search')}</button>
+    <button class="langbtn" data-act="lang">${esc(t('language'))}</button></div></header>`;
+}
+
+function vitalStatus(k, v, age) {
+  if (typeof v !== 'number' || !(typeof age === 'number' && age >= 18)) return '';
+  const R = { hr: [[v > 130 || v < 40, 'bad'], [v > 100 || v < 50, 'warn']], rr: [[v >= 25 || v <= 8, 'bad'], [v > 20 || v < 12, 'warn']],
+    spo2: [[v < 90, 'bad'], [v < 94, 'warn']], temp: [[v >= 39.5 || v < 35, 'bad'], [v >= 38 || v < 36, 'warn']],
+    sbp: [[v <= 90, 'bad'], [v > 180 || v <= 100, 'warn']], glucose: [[v < 4, 'bad'], [v > 11, 'warn']] }[k];
+  if (!R) return '';
+  const hit = R.find(([c]) => c);
+  return hit ? hit[1] : '';
+}
+
+function patientStrip() {
+  const v = store.snapshotValues();
+  const age = v['patient.age'];
+  const chips = [];
+  if (typeof v['vitals.sbp'] === 'number' && typeof v['vitals.dbp'] === 'number') chips.push(['BP', `${v['vitals.sbp']}/${v['vitals.dbp']}`, vitalStatus('sbp', v['vitals.sbp'], age)]);
+  for (const [k, lab] of [['hr', 'HR'], ['rr', 'RR'], ['spo2', 'SpO₂'], ['temp', 'T']]) if (typeof v[`vitals.${k}`] === 'number') chips.push([lab, `${v[`vitals.${k}`]}${k === 'spo2' ? '%' : k === 'temp' ? '°' : ''}`, vitalStatus(k, v[`vitals.${k}`], age)]);
+  const g = calcGcs({ e: v['gcs.e'], v: v['gcs.v'], m: v['gcs.m'] });
+  if (g.complete) chips.push(['GCS', String(g.total), g.total <= 8 ? 'bad' : g.total < 15 ? 'warn' : '']);
+  const news = evaluateById(store, 'news2');
+  if (news?.complete) chips.push(['NEWS2', String(news.total), news.total >= 7 ? 'bad' : news.total >= 5 || news.result.level === 'warn' ? 'warn' : '']);
+  const alerts = deriveAlerts(v).filter((a) => a.level === 'danger' || a.level === 'warn');
+  const complaints = store.activeComplaints().map((k) => complaintByKey(k)).filter(Boolean);
+  return `<div class="strip"><div class="strip-in">
+    ${complaints.map((c) => `<span class="chip">${esc(L(c.label))}</span>`).join('')}
+    ${chips.map(([l, val, cls]) => `<span class="vchip ${cls}">${esc(l)} <b>${esc(val)}</b></span>`).join('')}
+    ${alerts.length ? `<button class="vchip bad btnchip" data-act="tab" data-tab="now">${icon('alert', { size: 14 })}<b>${alerts.length}</b></button>` : ''}
+    ${!chips.length ? `<button class="vchip btnchip" data-act="tab" data-tab="exam">${icon('activity', { size: 14 })} ${esc(t('vitalsT'))}</button>` : ''}
+  </div></div>`;
+}
+
+const TABS = [['now', 'home', 'tabNow'], ['history', 'clipboard', 'tabHistory'], ['exam', 'stethoscope', 'tabExam'], ['workup', 'flask', 'tabWorkup'],
+  ['think', 'bulb', 'tabThink'], ['treat', 'syringe', 'tabTreat'], ['note', 'copy', 'tabNote']];
+function navHtml() {
+  const danger = deriveAlerts(store.snapshotValues()).filter((a) => a.level === 'danger').length;
+  return `<nav class="nav" aria-label="Case sections"><div class="nav-in">${TABS.map(([k, ic, lk]) =>
+    `<button class="${ui.tab === k ? 'on' : ''}" data-act="tab" data-tab="${k}" aria-current="${ui.tab === k}">${icon(ic)}<span>${esc(t(lk))}</span>${k === 'now' && danger ? `<span class="dot">${danger}</span>` : ''}</button>`).join('')}</div></nav>`;
+}
+
+function sidePanel() {
+  const text = renderCompleteCase(store, pack);
+  return `<aside class="side" aria-label="${esc(t('liveNote'))}"><div class="spread"><h3>${esc(t('liveNote'))}</h3>
+    <button class="btn small" data-act="copy" data-target="complete">${icon('copy')}${esc(t('copy'))}</button></div>
+    <div class="doc">${esc(text)}</div></aside>`;
+}
+
+// ================================================================ screens
 function homeView() {
-  const list = ui.cases.map((c) => `<div class="card"><div><b>${esc(new Date(c.updatedAt).toLocaleString())}</b>
-      ${c.demo ? `<span class="badge demo">${t('demoBadge')}</span>` : ''} ${c.status === 'final' ? `<span class="badge final">${t('finalBadge')}</span>` : ''}<br>
-      <span class="muted">${esc(c.complaints.map((k) => L(complaintByKey(k)?.label) || k).join(', ') || '—')}</span></div>
-      <div class="row"><button class="btn small primary" data-act="open-case" data-id="${esc(c.id)}">${t('open')}</button>
-      <button class="btn small danger" data-act="delete-case" data-id="${esc(c.id)}">${t('delete')}</button></div></div>`).join('');
-  return `<main><div class="stack">
-    <p class="muted">${esc(t('tagline'))}</p>
-    <div class="notice">🔒 <span>${esc(t('privacy'))}</span></div>
-    <button class="btn primary block" data-act="new-case">➕ ${esc(t('newCase'))}</button>
-    ${ui.lastId ? `<button class="btn block" data-act="open-case" data-id="${esc(ui.lastId)}">↩️ ${esc(t('openLast'))}</button>` : ''}
-    <button class="btn block" data-act="demo">🧪 ${esc(t('demoCase'))}</button>
-    ${ui.cases.length ? `<h3>${esc(t('savedCases'))}</h3><div class="caselist">${list}</div>` : ''}
-    <div class="grid2"><button class="btn" data-act="backup">💾 ${esc(t('backupNow'))}</button>
-    <button class="btn" data-act="restore-backup">📥 ${esc(t('restoreBackup'))}</button></div>
+  const list = ui.cases.map((c) => `<div class="caserow">${tile(c.demo ? 'bulb' : 'user', c.demo ? 'purple' : 'blue', 'sm')}
+      <div class="grow"><b>${esc(new Date(c.updatedAt).toLocaleString())}</b>
+      ${c.demo ? `<span class="badge demo">${t('demoBadge')}</span>` : ''} ${c.status === 'final' ? `<span class="badge final">${t('finalBadge')}</span>` : ''}
+      <div class="muted">${esc(c.complaints.map((k) => L(complaintByKey(k)?.label) || k).join(' · ') || '—')}</div></div>
+      <button class="btn small primary" data-act="open-case" data-id="${esc(c.id)}">${esc(t('open'))}</button>
+      <button class="iconbtn" data-act="delete-case" data-id="${esc(c.id)}" aria-label="${esc(t('delete'))}">${icon('trash')}</button></div>`).join('');
+  return `<main><div class="content stack">
+    <section class="hero"><h1>${esc(t('app'))}</h1><p>${esc(t('tagline'))}</p>
+      <div class="actions"><button class="btn primary" data-act="new-case">${icon('plus')}${esc(t('newPatient'))}</button>
+      ${ui.lastId ? `<button class="btn" data-act="open-case" data-id="${esc(ui.lastId)}">${icon('refresh')}${esc(t('openLast'))}</button>` : ''}
+      <button class="btn" data-act="demo">${icon('bulb')}${esc(t('demoCase'))}</button></div></section>
+    <div class="notice">${icon('lock')}<span>${esc(t('privacy'))}</span></div>
+    <div class="section-title"><h3>${esc(t('tools'))}</h3></div>
+    <div class="tools">
+      <button class="tool" data-act="library">${tile('calc', 'teal')}${esc(t('scoreLibrary'))}</button>
+      <button class="tool" data-act="open-search">${tile('search', 'blue')}${esc(t('searchAll'))}</button>
+      <button class="tool" data-act="backup">${tile('download', 'green')}${esc(t('backupNow'))}</button>
+      <button class="tool" data-act="restore-backup">${tile('upload', 'slate')}${esc(t('restoreBackup'))}</button></div>
     <input type="file" id="backup-file" accept="application/json,.json" hidden>
-    <p class="muted">${esc(t('draftNote'))} · v${esc(APP_VERSION)} · ${esc(t('offline'))}</p></div></main>`;
+    ${ui.cases.length ? `<div class="section-title"><h3>${esc(t('savedCases'))}</h3></div><div>${list}</div>` : ''}
+    <p class="tiny">${esc(t('draftNote'))} · v${esc(APP_VERSION)} · ${esc(t('offline'))}</p></div></main>`;
 }
 
 function intakeView() {
-  return `<main><div class="stack"><h2>${esc(t('newCase'))}</h2>
-    <div class="notice">🔒 <span>${esc(t('privacy'))}</span></div>
-    <div class="field"><label for="age">${esc(t('age'))}</label>
-      <input id="age" type="number" step="any" min="0" max="120" inputmode="decimal" data-bind="age" value="${esc(ui.intake.age)}"></div>
-    <div class="grid3">
-      <button class="opt ${ui.intake.sex === 'male' ? 'on' : ''}" data-act="sex" data-v="male"><span class="ico">♂️</span>${esc(t('male'))}</button>
-      <button class="opt ${ui.intake.sex === 'female' ? 'on' : ''}" data-act="sex" data-v="female"><span class="ico">♀️</span>${esc(t('female'))}</button>
-      <button class="opt ${ui.intake.sex === 'unknown' ? 'on' : ''}" data-act="sex" data-v="unknown"><span class="ico">❔</span>${esc(t('unknown'))}</button></div>
-    <div class="field"><label for="text">${esc(t('inYourWords'))}</label>
-      <textarea id="text" data-bind="text">${esc(ui.intake.text)}</textarea></div>
+  const speech = typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window);
+  return `<main><div class="content stack"><h2>${esc(t('newPatient'))}</h2>
+    <div class="notice">${icon('lock')}<span>${esc(t('privacy'))}</span></div>
+    <div class="card stack">
+      <div class="field"><label for="age">${esc(t('age'))}</label>
+        <input id="age" type="number" step="any" min="0" max="120" inputmode="decimal" data-bind="age" value="${esc(ui.intake.age)}"></div>
+      <div class="field"><label>${esc(t('sex'))}</label><div class="seg">
+        ${['male', 'female', 'unknown'].map((s) => `<button class="${ui.intake.sex === s ? 'on' : ''}" data-act="sex" data-v="${s}">${esc(t(s))}</button>`).join('')}</div></div>
+      <div class="field"><label for="text">${esc(t('inYourWords'))}</label>
+        <textarea id="text" data-bind="text" placeholder="55-year-old male, diabetic, crushing central chest pain for 30 minutes, sweating">${esc(ui.intake.text)}</textarea>
+        ${speech ? `<button class="btn small" data-act="dictate">${icon('mic')}${esc(t('dictate'))}</button>` : ''}</div>
+    </div>
     <button class="btn primary block" data-act="intake-submit">${esc(t('continue'))}</button></div></main>`;
 }
 
@@ -174,225 +304,373 @@ function complaintListHtml() {
   const q = ui.search.trim().toLowerCase();
   const items = pack.complaints.filter((c) => !q || c.label.en.toLowerCase().includes(q) || c.label.ar.includes(q) || c.synonyms.some((s) => s.toLowerCase().includes(q)));
   const active = new Set(store.activeComplaints());
-  return items.map((c) => `<button class="opt ${active.has(c.key) ? 'on' : ''}" data-act="toggle-complaint" data-key="${c.key}" aria-pressed="${active.has(c.key)}">
-      <span class="ico">${icon(c.icon)}</span>${esc(L(c.label))}</button>`).join('') || `<p class="muted">—</p>`;
+  return items.map((c) => `<button class="copt ${active.has(c.key) ? 'on' : ''}" data-act="toggle-complaint" data-key="${c.key}" aria-pressed="${active.has(c.key)}">
+      ${cTile(c)}<span>${esc(L(c.label))}</span>${active.has(c.key) ? `<span class="tick">${icon('check')}</span>` : ''}</button>`).join('') || `<p class="muted">${esc(t('noResults'))}</p>`;
 }
 function complaintsView() {
-  return `<main><div class="stack"><h2>${esc(t('chooseComplaint'))}</h2>
-    <div class="field"><input id="csearch" type="text" placeholder="${esc(t('searchComplaint'))}" data-bind="search" value="${esc(ui.search)}" aria-label="${esc(t('searchComplaint'))}"></div>
-    <div class="cards" id="clist">${complaintListHtml()}</div>
-    <button class="btn primary block" data-act="start-interview" ${store.activeComplaints().length ? '' : 'disabled'}>${esc(t('startInterview'))}</button></div></main>`;
+  const n = store.activeComplaints().length;
+  return `<main><div class="content stack"><h2>${esc(t('chooseComplaint'))}</h2>
+    <p class="muted">${esc(ui.lang === 'ar' ? 'يمكن اختيار أكثر من شكوى — تبقى كلها في حالة واحدة.' : 'Select one or more — they stay in one connected case.')}</p>
+    <label class="search">${icon('search')}<input id="csearch" type="search" placeholder="${esc(t('searchComplaint'))}" data-bind="search" value="${esc(ui.search)}" aria-label="${esc(t('searchComplaint'))}"></label>
+    <div class="cgrid" id="clist">${complaintListHtml()}</div>
+    <button class="btn primary block" data-act="start-interview" ${n ? '' : 'disabled'}>${esc(t('startInterview'))}${n ? ` (${n})` : ''}</button></div></main>`;
 }
 
-function questionHtml(q) {
-  const cur = store.getFact(q.fact);
-  const head = `<div class="qicon">${icon(q.icon ?? complaintByKey(q.complaints[0])?.icon)}</div><div class="q">${esc(L(q.prompt))}</div>`;
-  let body = '';
-  if (q.type === 'yesno') {
-    body = `<div class="grid2"><button class="opt ${cur === 'yes' ? 'on' : ''}" data-act="answer" data-q="${q.id}" data-v="yes"><span class="ico">✅</span>${esc(t('yes'))}</button>
-      <button class="opt ${cur === 'no' ? 'on' : ''}" data-act="answer" data-q="${q.id}" data-v="no"><span class="ico">❌</span>${esc(t('no'))}</button></div>`;
-  } else if (q.type === 'choice') {
-    if (ui.pendingText?.q === q.id) {
-      const o = q.options.find((x) => x.v === ui.pendingText.v);
-      body = `<div class="field"><label>${esc(L(o.textPrompt))}</label><input id="ptext" type="text" data-bind="ptext" value="${esc(ui.pendingText.text ?? '')}"></div>
-        <button class="btn primary block" data-act="answer-text" data-q="${q.id}">${esc(t('save'))}</button>`;
-    } else {
-      body = `<div class="cards">${q.options.map((o) => `<button class="opt ${cur === o.v ? 'on' : ''}" data-act="answer" data-q="${q.id}" data-v="${o.v}">${esc(L(o))}</button>`).join('')}</div>`;
-    }
-  } else if (q.type === 'scale') {
-    const n = [];
-    for (let i = q.min; i <= q.max; i += 1) n.push(i);
-    body = `<div class="scale">${n.map((i) => `<button class="opt ${cur === i ? 'on' : ''}" data-act="answer" data-q="${q.id}" data-v="${i}">${i}</button>`).join('')}</div>`;
-  } else if (q.type === 'duration') {
-    body = `<div class="cards">${q.presets.map((p) => `<button class="opt" data-act="answer-duration" data-q="${q.id}" data-n="${p.n}" data-unit="${p.unit}">${esc(formatDuration(p))}</button>`).join('')}</div>
-      <h3>${esc(t('custom'))}</h3><div class="row"><input type="number" step="any" inputmode="decimal" style="width:110px" data-bind="cn" value="${esc(ui.custom.n)}" aria-label="${esc(t('custom'))}">
-      ${['min', 'hour', 'day', 'week'].map((u) => `<button class="btn small ${ui.custom.unit === u ? 'primary' : ''}" data-act="custom-unit" data-unit="${u}">${esc(t({ min: 'minutes', hour: 'hours', day: 'days', week: 'weeks' }[u]))}</button>`).join('')}
-      <button class="btn small green" data-act="answer-duration" data-q="${q.id}" data-custom="1">${esc(t('set'))}</button></div>`;
-  }
-  const skip = store.isAnswered(q.fact) ? '' : `<button class="btn block" data-act="unknown-q" data-q="${q.id}">${esc(t('skipUnknown'))}</button>`;
-  return `${head}${body}<div style="margin-top:16px">${skip}</div>`;
+// ---------------------------------------------------------------- case: NOW dashboard
+function nextInterviewKey() {
+  if (ui.editKey) return { key: ui.editKey };
+  const q = nextQuestion(pack, store);
+  if (q) return { key: q.fact };
+  const pend = pendingHistoryInputs(pack, store)[0];
+  return pend ? { key: pend.key, forScore: pend.forScore } : null;
 }
 
-function interviewView() {
-  if (isFinal()) return `<main><div class="alert ok">${esc(t('caseComplete'))}</div></main>`;
-  if (!store.activeComplaints().length) {
-    return `<main><div class="stack"><h2>${esc(t('chooseComplaint'))}</h2><button class="btn primary block" data-act="goto-complaints">${esc(t('chooseComplaint'))}</button></div></main>`;
-  }
+function nowView() {
+  const v = store.snapshotValues();
+  const alerts = deriveAlerts(v);
+  const nxt = isFinal() ? null : nextInterviewKey();
+  const inv = suggestInvestigations(pack, store).filter((x) => x.tier === 'now' && !x.status).slice(0, 4);
+  const scores = relevantScores(pack, store);
+  const r = reason(pack, store);
+  const missing = missingInformation(pack, store).slice(0, 4);
+  const nxtDef = nxt ? specFor(nxt.key) : null;
+  const nxtPrompt = nxtDef ? L((nxtDef.question ?? nxtDef.def)?.prompt) : '';
+  return `<div class="stack">
+    <div><h2>${esc(t('whatMatters'))}</h2><span class="badge ai" style="margin-top:6px">${esc(t('aiLabel'))}</span></div>
+    ${alerts.length ? alerts.map(alertHtml).join('') : `<div class="alert ok">${icon('check')}<span class="t">${esc(t('noAlerts'))}</span></div>`}
+    <div class="card"><div class="card-h">${tile('clipboard', 'blue')}<h4>${esc(t('nextStep'))}</h4></div>
+      ${nxt ? `<p style="font-weight:700;font-size:1.05rem">${esc(nxtPrompt)}</p>${nxt.forScore ? `<p class="tiny">${esc(t('alsoNeeded'))} ${esc(SCORE_BY_ID[nxt.forScore]?.name)}</p>` : ''}
+        <button class="btn primary block" style="margin-top:12px" data-act="tab" data-tab="history">${esc(t('continueHistory'))}${icon('chevron')}</button>`
+        : `<div class="row"><span class="pill ok">${icon('check')}${esc(t('historyDone'))}</span><button class="btn small" data-act="tab" data-tab="exam">${esc(t('tabExam'))}</button><button class="btn small" data-act="tab" data-tab="workup">${esc(t('tabWorkup'))}</button></div>`}</div>
+    ${inv.length ? `<div class="card"><div class="card-h">${tile('flask', 'red')}<h4>${esc(t('tierNow'))}</h4><button class="btn small ghost" data-act="tab" data-tab="workup">${esc(t('seeAll'))}</button></div>
+      ${inv.map((x) => `<div class="spread" style="padding:6px 0"><div class="grow"><b>${esc(L(x.label))}</b><div class="tiny">${esc(x.reasons[0].why)}</div></div>
+        ${isFinal() ? '' : `<button class="btn small" data-act="inv-request" data-id="${esc(x.id)}">${esc(t('request'))}</button>`}</div>`).join('')}</div>` : ''}
+    ${scores.length ? `<div class="card"><div class="card-h">${tile('calc', 'teal')}<h4>${esc(t('relevantScores'))}</h4></div>
+      <div>${scores.map((s) => `<button class="mini" data-act="open-score" data-id="${s.id}"><span class="grow">${esc(SCORE_BY_ID[s.id].name)}</span>${pillFor(s.result)}</button>`).join('')}</div></div>` : ''}
+    ${r.mustNotMiss.length ? `<div class="card"><div class="card-h">${tile('alert', 'orange')}<h4>${esc(t('mustNotMissShort'))}</h4><button class="btn small ghost" data-act="tab" data-tab="think">${esc(t('seeAll'))}</button></div>
+      <div class="row">${r.mustNotMiss.slice(0, 6).map((d) => `<span class="chip ${store.getFact(considerKey(d.id)) ? 'green' : 'orange'}">${esc(L(d.dx))}</span>`).join('')}</div></div>` : ''}
+    ${missing.length ? `<div class="card"><div class="card-h">${tile('info', 'yellow')}<h4>${esc(t('missing'))}</h4></div>
+      ${missing.map((m) => `<div class="spread" style="padding:6px 0"><div class="grow"><b>${esc(m.status)}: ${esc(m.label)}</b><div class="tiny">${esc(m.why)}</div></div>
+        ${isFinal() ? '' : `<button class="btn small" data-act="ask-now" data-ask="${esc(m.ask)}" data-key="${esc(m.key)}">${esc(t('askNow'))}</button>`}</div>`).join('')}</div>` : ''}
+  </div>`;
+}
+
+// ---------------------------------------------------------------- case: HISTORY
+function historyView() {
+  if (isFinal()) return `<div class="alert ok">${icon('check')}<span class="t">${esc(t('caseComplete'))}</span></div>`;
+  if (!store.activeComplaints().length) return `<div class="stack"><h2>${esc(t('chooseComplaint'))}</h2><button class="btn primary block" data-act="goto-complaints">${esc(t('chooseComplaint'))}</button></div>`;
   const p = progress(pack, store);
-  const forced = ui.editQ ? pack.questions.find((x) => x.id === ui.editQ) : null;
-  const q = forced ?? nextQuestion(pack, store);
-  const bar = `<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${p.total}" aria-valuenow="${p.done}"><i style="width:${p.total ? Math.round((p.done / p.total) * 100) : 0}%"></i></div><div class="muted">${p.done} / ${p.total}</div>`;
-  const answered = applicableQuestions(pack, store).filter(({ q: x }) => store.getFact(x.fact) !== undefined);
-  const answeredList = answered.length ? `<details><summary>${esc(t('answers'))} (${answered.length})</summary>${answered.map(({ q: x }) => {
-    const v = store.getFact(x.fact);
-    const shown = x.type === 'yesno' ? t(v) : x.type === 'choice' ? L(x.options.find((o) => o.v === v)) : x.type === 'duration' ? formatDuration(v) : String(v);
-    return `<div class="kv"><span>${esc(L(x.prompt))}</span><b>${esc(shown)}</b><button class="btn small" data-act="edit-q" data-q="${x.id}">${esc(t('change'))}</button></div>`;
+  const nxt = nextInterviewKey();
+  const bar = `<div class="spread"><span class="tiny">${p.done} / ${p.total}</span><button class="btn small ghost" data-act="goto-complaints">${icon('plus')}${esc(t('addComplaint'))}</button></div>
+    <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${p.total}" aria-valuenow="${p.done}"><i style="width:${p.total ? Math.round((p.done / p.total) * 100) : 0}%"></i></div>`;
+  const answered = applicableQuestions(pack, store).filter(({ q }) => store.getFact(q.fact) !== undefined);
+  const extra = Object.keys(FACTS).filter((k) => ['pmh', 'meds', 'social', 'family', 'sx'].includes(FACTS[k].section) && store.getFact(k) !== undefined && !answered.some(({ q }) => q.fact === k));
+  const rows = [...answered.map(({ q }) => q.fact), ...extra];
+  const answeredList = rows.length ? `<details class="card flat tight"><summary><b>${esc(t('answers'))} (${rows.length})</b></summary>${rows.map((k) => {
+    const sp = specFor(k); const def = sp.question ?? sp.def;
+    return `<div class="kv"><span>${esc(L(def?.prompt))}</span><span class="row"><b>${esc(displayValue(k, store.getFact(k)))}</b><button class="btn small" data-act="edit-q" data-key="${esc(k)}">${esc(t('change'))}</button></span></div>`;
   }).join('')}</details>` : '';
-  if (!q) {
-    return `<main><div class="stack">${bar}<div class="alert ok"><span>✅</span><span class="t">${esc(t('interviewDone'))}</span></div>
-      <button class="btn block" data-act="goto-complaints">➕ ${esc(t('addComplaint'))}</button>${answeredList}</div></main>`;
+  if (!nxt) {
+    return `<div class="stack">${bar}<div class="alert ok">${icon('check')}<span class="t">${esc(t('interviewDone'))}</span></div>
+      <div class="row"><button class="btn" data-act="tab" data-tab="exam">${icon('stethoscope')}${esc(t('tabExam'))}</button><button class="btn" data-act="tab" data-tab="workup">${icon('flask')}${esc(t('tabWorkup'))}</button></div>${answeredList}</div>`;
   }
-  return `<main><div class="stack">${bar}<div>${questionHtml(q)}</div>${ui.editQ ? `<button class="btn block" data-act="cancel-edit">${esc(t('cancel'))}</button>` : ''}${answeredList}</div></main>`;
+  const note = nxt.forScore ? `${esc(t('alsoNeeded'))} ${esc(SCORE_BY_ID[nxt.forScore]?.name)}` : '';
+  return `<div class="stack">${bar}<div class="card">${questionHtml(nxt.key, { note })}</div>
+    ${ui.editKey ? `<button class="btn block" data-act="cancel-edit">${esc(t('cancel'))}</button>` : ''}${answeredList}</div>`;
 }
 
-const VITAL_ROWS = [
-  { k: 'hr', step: 1 }, { k: 'rr', step: 1 }, { k: 'spo2', step: 1 }, { k: 'temp', step: 0.1 },
-  { k: 'glucose', step: 0.1 }, { k: 'weight', step: 0.1 }, { k: 'height', step: 1 },
-];
-function vitalRow(r) {
-  const key = `vitals.${r.k}`;
-  const v = store.getFact(key);
-  const label = esc(t({ hr: 'hr', rr: 'rr', spo2: 'spo2', temp: 'temp', glucose: 'glucose', weight: 'weight', height: 'height' }[r.k]));
-  if (v !== undefined) {
-    return `<div class="vital"><div class="lbl">${label}</div><div><span class="val">${esc(v)}</span> <span class="unit">${UNITS[r.k]}</span></div>${vitalActions(key)}</div>`;
+// ---------------------------------------------------------------- case: EXAM (vitals, GCS, findings)
+const VT = [['bp', 'heart', 'red'], ['hr', 'pulse', 'pink'], ['rr', 'lungs', 'teal'], ['spo2', 'droplet', 'blue'], ['temp', 'thermometer', 'orange'], ['glucose', 'droplet', 'purple'], ['weight', 'user', 'slate'], ['height', 'user', 'slate']];
+function vitalTile([k, ic]) {
+  const v = store.snapshotValues();
+  const age = v['patient.age'];
+  let val; let status = ''; let trend = '';
+  if (k === 'bp') {
+    const s = v['vitals.sbp']; const d = v['vitals.dbp'];
+    if (typeof s === 'number' && typeof d === 'number') { val = `${s}/${d}<small>mmHg</small>`; status = vitalStatus('sbp', s, age); }
+    const prev = readingsOf(store, 'vitals.sbp').slice(0, -1);
+    const corr = (store.getFactRecord('vitals.sbp')?.history ?? []).filter((h) => h.status === 'corrected').length;
+    if (prev.length) trend = `${t('earlier')}: ${prev.slice(-2).join(', ')}`;
+    if (corr) trend += `${trend ? ' · ' : ''}${corr} ${ui.lang === 'ar' ? 'تصحيح' : 'corrected'}`;
+  } else {
+    const x = v[`vitals.${k}`];
+    if (typeof x === 'number') { val = `${x}<small>${esc(UNITS[k])}</small>`; status = vitalStatus(k, x, age); }
+    const prev = readingsOf(store, `vitals.${k}`).slice(0, -1);
+    if (prev.length) trend = `${t('earlier')}: ${prev.slice(-2).join(', ')}`;
   }
-  return `<div class="vital"><div class="lbl"><label for="v-${r.k}">${label}</label></div>
-    <input id="v-${r.k}" type="number" step="${r.step}" inputmode="decimal" data-enter="set-vital" data-k="${r.k}"><span class="unit">${UNITS[r.k]}</span>
-    <button class="btn small primary" data-act="set-vital" data-k="${r.k}">${esc(t('set'))}</button></div>`;
-}
-const vitalActions = (key) => `<div class="row">
-  <button class="btn small" data-act="new-reading" data-key="${key}">${esc(t('newReading'))}</button>
-  <button class="btn small" data-act="correct" data-key="${key}">${esc(t('correctMeasurement'))}</button>
-  <button class="btn small danger" data-act="remove" data-key="${key}">${esc(t('removeCalc'))}</button></div>`;
-
-function vitalsView() {
-  if (isFinal()) return `<main><div class="alert ok">${esc(t('caseComplete'))}</div></main>`;
-  const sbp = store.getFact('vitals.sbp');
-  const dbp = store.getFact('vitals.dbp');
-  const hr = store.getFact('vitals.hr');
-  const bp = (typeof sbp === 'number' && typeof dbp === 'number')
-    ? `<div class="vital"><div class="lbl">${esc(t('bp'))}</div><div><span class="val">${sbp}/${dbp}</span> <span class="unit">mmHg</span></div>${vitalActions('bp')}</div>`
-    : `<div class="vital"><div class="lbl">${esc(t('bp'))}</div>
-        <input id="v-sbp" type="number" inputmode="decimal" placeholder="${esc(t('sbp'))}" aria-label="${esc(t('sbp'))}" data-enter="set-bp" value="${esc(sbp ?? '')}">/
-        <input id="v-dbp" type="number" inputmode="decimal" placeholder="${esc(t('dbp'))}" aria-label="${esc(t('dbp'))}" data-enter="set-bp" value="${esc(dbp ?? '')}">
-        <button class="btn small primary" data-act="set-bp">${esc(t('set'))}</button></div>`;
-  const map = calcMap(sbp, dbp);
-  const si = calcShockIndex(hr, sbp);
-  const bmi = calcBmi(store.getFact('vitals.weight'), store.getFact('vitals.height'));
-  const derived = [map !== null ? `${t('map')}: <b>${map} mmHg</b>` : '', si !== null ? `${t('shockIndex')}: <b>${si.toFixed(2)}</b>` : '', bmi !== null ? `${t('bmi')}: <b>${bmi.toFixed(1)}</b>` : ''].filter(Boolean);
-  const o2 = store.getFact('vitals.o2device');
-  const g = { e: store.getFact('gcs.e'), v: store.getFact('gcs.v'), m: store.getFact('gcs.m') };
-  const gcs = calcGcs(g);
-  const gcsRows = [['e', 'eye'], ['v', 'verbal'], ['m', 'motor']].map(([k, lk]) => `<h3>${esc(t(lk))}</h3><div class="cards">${GCS_OPTIONS[k].map((o) =>
-    `<button class="opt ${g[k] === o.v ? 'on' : ''}" data-act="gcs" data-k="${k}" data-v="${o.v}"><b>${o.v}</b> ${esc(L(o))}</button>`).join('')}</div>`).join('');
-  return `<main><div class="stack">${bp}${VITAL_ROWS.map(vitalRow).join('')}
-    <h3>${esc(t('oxygen'))}</h3><div class="cards">${O2_OPTIONS.map((o) => `<button class="opt ${o2 === o.v ? 'on' : ''}" data-act="o2" data-v="${o.v}">${esc(L(o))}</button>`).join('')}</div>
-    ${derived.length ? `<div class="alert info"><span>🧮</span><div><span class="t">${esc(t('derived'))}</span><br>${derived.join(' · ')}</div></div>` : ''}
-    <h2>${esc(t('gcs'))}</h2>
-    <div class="alert ${gcs.complete ? 'ok' : 'info'}"><span>🧠</span><span class="t">${esc(gcs.complete || g.e || g.v || g.m ? gcs.text : '—')}</span></div>${gcsRows}</div></main>`;
+  const label = t(k === 'bp' ? 'bp' : k);
+  return `<button class="vt ${status}" data-act="vital" data-k="${k}" ${isFinal() ? 'disabled' : ''}><span class="lab">${icon(ic)}${esc(label)}</span>
+    <span class="val ${val ? '' : 'empty'}">${val ?? esc(t('tapToEnter'))}</span>${trend ? `<span class="trend">${esc(trend)}</span>` : ''}</button>`;
 }
 
 function examView() {
-  if (isFinal()) return `<main><div class="alert ok">${esc(t('caseComplete'))}</div></main>`;
-  return `<main><div class="stack">${pack.exam.map((s) => `<h3>${esc(L(s.title))}</h3><div class="cards">${s.findings.map((f) =>
-    `<button class="opt ${store.getFact(f.fact) ? 'on' : ''}" data-act="exam" data-f="${f.fact}" aria-pressed="${!!store.getFact(f.fact)}">${esc(L(f.label))}</button>`).join('')}</div>`).join('')}</div></main>`;
+  if (isFinal()) return `<div class="alert ok">${icon('check')}<span class="t">${esc(t('caseComplete'))}</span></div>`;
+  const v = store.snapshotValues();
+  const sbp = v['vitals.sbp']; const dbp = v['vitals.dbp']; const hr = v['vitals.hr'];
+  const map = calcMap(sbp, dbp);
+  const pp = typeof sbp === 'number' && typeof dbp === 'number' ? sbp - dbp : null;
+  const si = calcShockIndex(hr, sbp);
+  const msi = typeof hr === 'number' && map ? Math.round((hr / map) * 100) / 100 : null;
+  const bmi = calcBmi(v['vitals.weight'], v['vitals.height']);
+  const derived = [map !== null && [t('map'), `${map} mmHg`], pp !== null && [t('pulsePressure'), `${pp} mmHg`], si !== null && [t('shockIndex'), si.toFixed(2)], msi !== null && [t('modShock'), msi.toFixed(2)], bmi !== null && [t('bmi'), bmi.toFixed(1)]].filter(Boolean);
+  const o2 = v['vitals.o2device'];
+  const g = { e: v['gcs.e'], v: v['gcs.v'], m: v['gcs.m'] };
+  const gcs = calcGcs(g);
+  const gcsRows = [['e', 'eye'], ['v', 'verbal'], ['m', 'motor']].map(([k, lk]) => `<div class="field"><label>${esc(t(lk))}</label><div class="gcsrow">${GCS_OPTIONS[k].map((o) =>
+    `<button class="opt ${g[k] === o.v ? 'on' : ''}" data-act="gcs" data-k="${k}" data-v="${o.v}" title="${esc(L(o))}"><b>${o.v}</b>${esc(L(o))}</button>`).join('')}</div></div>`).join('');
+  return `<div class="stack">
+    <div class="section-title" style="margin-top:0"><h3>${esc(t('vitalsT'))}</h3></div>
+    <div class="vgrid">${VT.map(vitalTile).join('')}</div>
+    ${derived.length ? `<div class="derived">${derived.map(([l, x]) => `<span class="chip blue">${icon('calc')}${esc(l)}: ${esc(x)}</span>`).join('')}</div>` : ''}
+    <div class="field"><label>${esc(t('oxygen'))}</label><div class="seg">${O2_OPTIONS.map((o) => `<button class="${o2 === o.v ? 'on' : ''}" data-act="o2" data-v="${o.v}">${esc(L(o))}</button>`).join('')}</div></div>
+    <div class="card"><div class="card-h">${tile('brain', 'purple')}<h4>${esc(t('gcs'))}</h4><span class="gcs-total" aria-live="polite">${gcs.complete ? `${gcs.total}<small class="tiny">/15</small>` : ''}</span></div>
+      <p class="muted" style="margin-bottom:10px">${esc(gcs.complete || g.e || g.v || g.m ? gcs.text : (ui.lang === 'ar' ? 'اختر العين والكلام والحركة — يُحسب المجموع تلقائياً.' : 'Select eye, verbal and motor — the total is calculated automatically.'))}</p>${gcsRows}</div>
+    <div class="section-title"><h3>${esc(t('examFindings'))}</h3></div>
+    ${pack.exam.map((s) => `<div class="card flat"><div class="card-h">${tile(s.key === 'resp' ? 'lungs' : s.key === 'cvs' ? 'heart' : 'stomach', s.key === 'resp' ? 'teal' : s.key === 'cvs' ? 'red' : 'orange', 'sm')}<h4>${esc(L(s.title))}</h4></div>
+      <div class="exgrid">${s.findings.map((f) => `<button class="opt ${/normal/i.test(f.fact) ? 'normal' : 'abn'} ${store.getFact(f.fact) ? 'on' : ''}" data-act="exam" data-f="${f.fact}" aria-pressed="${!!store.getFact(f.fact)}">${esc(L(f.label))}</button>`).join('')}</div></div>`).join('')}
+  </div>`;
 }
 
-const DISPOSITIONS = ['Discharge home', 'Admit to ward', 'Admit to ICU', 'Observation', 'Transfer to another facility', 'Left against medical advice'];
-function noteView() {
-  const sections = buildSections(store, pack).filter((s) => !s.empty || s.core);
+// ---------------------------------------------------------------- case: WORKUP (scores, investigations, results)
+const TIER_META = { now: ['tierNow', 'alert'], soon: ['tierSoon', 'clock'], consider: ['tierConsider', 'bulb'], not_routine: ['tierNotRoutine', 'x'] };
+const KIND_ICON = { lab: ['flask', 'teal'], ecg: ['ecg', 'red'], imaging: ['imaging', 'slate'], bedside: ['activity', 'blue'], procedure: ['syringe', 'purple'] };
+
+function resultKeys() {
+  const keys = new Set(['ecg.heart_cat', 'ecg.rhythm']);
+  for (const s of relevantScores(pack, store)) for (const inp of SCORE_BY_ID[s.id].inputs) for (const f of inp.facts ?? []) if (/^(lab|ecg)\./.test(f)) keys.add(f);
+  for (const k of Object.keys(store.snapshotValues())) if (/^(lab|ecg)\./.test(k) && FACTS[k]) keys.add(k);
+  return [...keys].filter((k) => FACTS[k]);
+}
+
+function workupView() {
+  const scores = relevantScores(pack, store);
+  const inv = suggestInvestigations(pack, store);
   const ro = isFinal();
-  const secHtml = sections.map((s) => `<section class="sec"><header><h4>${esc(s.title)}</h4>
-      <button class="btn small" data-act="copy" data-target="${s.id}" ${s.empty ? 'disabled' : ''}>📄 ${esc(t('copy'))}</button></header>
-      ${s.lines.length ? s.lines.map((l) => `<p>${esc(l)}</p>`).join('') : `<p class="none">Not documented.</p>`}</section>`).join('');
-  const edit = ro ? '' : `<h3>${esc(t('assessment'))}</h3><div class="stack">
-      <div class="field"><label for="imp">${esc(t('impression'))}</label><textarea id="imp" data-save="assessment.impression">${esc(store.getFact('assessment.impression') ?? '')}</textarea></div>
-      <div class="field"><label for="dx">${esc(t('diagnosis'))}</label><input id="dx" type="text" data-save="assessment.diagnosis" value="${esc(store.getFact('assessment.diagnosis') ?? '')}"></div>
-      <h3>${esc(t('disposition'))}</h3><div class="cards">${DISPOSITIONS.map((d) => `<button class="opt ${store.getFact('disposition.decision') === d ? 'on' : ''}" data-act="dispo" data-v="${esc(d)}">${esc(d)}</button>`).join('')}</div>
-      <button class="btn green block" data-act="finalize">✅ ${esc(t('finalize'))}</button></div>`;
-  const fin = ro ? `<div class="alert ok"><span>✅</span><span class="t">${esc(t('caseComplete'))}</span></div>
-      <button class="btn block" data-act="reopen">${esc(t('reopen'))}</button>` : '';
-  return `<main>${fin}${secHtml}${edit}</main><div class="fab"><button class="btn primary" data-act="copy" data-target="complete">📋 ${esc(t('copyAll'))}</button></div>`;
+  const scoreHtml = scores.length ? scores.map((s) => `<button class="scorecard" data-act="open-score" data-id="${s.id}">${tile('calc', 'teal', 'sm')}
+      <span class="body"><span class="title">${esc(SCORE_BY_ID[s.id].name)}</span><span class="sub" style="display:block">${esc(s.why)}</span></span>${pillFor(s.result)}</button>`).join('')
+    : `<p class="muted">${esc(t('noRelevant'))}</p>`;
+  const tiers = ['now', 'soon', 'consider', 'not_routine'].map((tier) => {
+    const items = inv.filter((x) => x.tier === tier);
+    if (!items.length) return '';
+    const [lk, ic] = TIER_META[tier];
+    return `<div class="tier ${tier}">${icon(ic)}${esc(t(lk))}</div>${items.map((x) => {
+      const [kic, ktone] = KIND_ICON[x.kind] ?? KIND_ICON.lab;
+      const why = x.reasons.map((r) => `<p>${esc(r.why)}</p>${srcList(r.sources)}`).join('');
+      const acts = ro || tier === 'not_routine' ? '' : x.status
+        ? `<span class="pill ok">${icon('check')}${esc(t('requested'))}</span><button class="btn small ghost" data-act="inv-undo" data-id="${esc(x.id)}">${esc(t('undo'))}</button>`
+        : `<button class="btn small ${tier === 'now' ? 'primary' : ''}" data-act="inv-request" data-id="${esc(x.id)}">${esc(t('request'))}</button>`;
+      return `<div class="item ${x.status ? 'req' : ''}">${tile(kic, ktone, 'sm')}<div class="body"><div class="title">${esc(L(x.label))}</div><div class="sub">${esc(x.reasons[0].why)}</div>
+        <details class="why"><summary>${icon('info', { size: 14 })}${esc(t('whyT'))}</summary>${why}</details></div><div class="acts">${acts}</div></div>`;
+    }).join('')}`;
+  }).join('');
+  const rk = resultKeys();
+  const labs = rk.filter((k) => k.startsWith('lab.')); const ecg = rk.filter((k) => k.startsWith('ecg.'));
+  const resRow = (k) => `<button class="scorecard" data-act="ask-fact" data-key="${esc(k)}" ${ro ? 'disabled' : ''}><span class="body"><span class="title">${esc(FACTS[k].label ?? L(FACTS[k].prompt))}</span></span>
+      <b>${esc(displayValue(k, store.getFact(k)))}</b>${icon('edit', { size: 18 })}</button>`;
+  return `<div class="stack">
+    <div class="section-title" style="margin-top:0">${tile('calc', 'teal', 'sm')}<h3>${esc(t('relevantScores'))}</h3></div>${scoreHtml}
+    <div class="section-title">${tile('flask', 'red', 'sm')}<h3>${esc(t('tabWorkup'))}</h3><span class="badge ai">${esc(t('aiLabel'))}</span></div>
+    ${tiers || `<p class="muted">${esc(t('noRelevant'))}</p>`}
+    <div class="section-title">${tile('ecg', 'red', 'sm')}<h3>${esc(t('ecgT'))}</h3></div>${ecg.map(resRow).join('')}
+    <div class="section-title">${tile('flask', 'teal', 'sm')}<h3>${esc(t('labs'))}</h3></div>${labs.length ? labs.map(resRow).join('') : `<p class="muted">—</p>`}
+  </div>`;
 }
 
-const EVENT_TYPES = [['treatment', 'evTreatment'], ['investigation', 'evInvestigation'], ['consult', 'evConsult'], ['reassessment', 'evReassess'], ['other', 'evOther']];
-function timelineView() {
-  const events = store.timeline();
-  const list = events.length ? `<ul class="tl">${events.map((e) => `<li><time>${esc(formatTime(e.at))}</time><span style="flex:1">${esc(e.text)}${e.corrections.length ? ' <span class="muted">(time corrected)</span>' : ''}</span>
-      ${isFinal() ? '' : `<button class="btn small" data-act="event-time" data-id="${e.id}">${esc(t('changeTime'))}</button>`}</li>`).join('')}</ul>` : `<p class="muted">${esc(t('noEvents'))}</p>`;
-  const form = isFinal() ? '' : `<div class="stack"><div class="cards">${EVENT_TYPES.map(([v, k]) => `<button class="opt ${ui.evType === v ? 'on' : ''}" data-act="ev-type" data-v="${v}">${esc(t(k))}</button>`).join('')}</div>
-      <div class="field"><label for="evtext">${esc(t('eventText'))}</label><input id="evtext" type="text" data-enter="add-event"></div>
-      <button class="btn primary block" data-act="add-event">${esc(t('addEvent'))}</button></div>`;
-  return `<main><div class="stack">${form}<h3>${esc(t('tabTimeline'))}</h3>${list}
-    <button class="btn block" data-act="copy" data-target="timeline" ${events.length ? '' : 'disabled'}>📄 ${esc(t('copy'))}</button></div></main>`;
-}
-
-
+// ---------------------------------------------------------------- case: THINK (differential)
 function thinkView() {
-  if (store.activeComplaints().length === 0) return `<main><div class="stack"><p class="muted">${esc(t('thinkEmpty'))}</p></div></main>`;
+  if (store.activeComplaints().length === 0) return `<p class="muted">${esc(t('thinkEmpty'))}</p>`;
   const r = reason(pack, store);
-  const lang = ui.lang;
-  const srcHtml = (ids) => ids.length
-    ? `<small class="muted">${esc(t('sourcesT'))}: ${ids.map((id) => esc(citationFor(pack, id) ?? id)).join(' · ')}</small>`
-    : `<small class="muted">${esc(t('noSourceYet'))}</small>`;
-  const clusters = r.clusters.map((c) => `<div class="alert warn"><span>🧩</span><div><span class="t">${esc(c.label[lang] ?? c.label.en)}</span></div></div>`).join('');
+  const clusters = r.clusters.map((c) => `<div class="alert warn">${icon('bulb')}<div><span class="t">${esc(L(c.label))}</span></div></div>`).join('');
   const mnm = r.mustNotMiss.map((d) => {
-    const key = considerKey(d.id);
-    const on = store.getFact(key) !== undefined;
+    const on = store.getFact(considerKey(d.id)) !== undefined;
     const action = isFinal() ? '' : on
       ? `<button class="btn small" data-act="unconsider" data-dx="${esc(d.id)}">${esc(t('removeConsider'))}</button>`
-      : `<button class="btn small" data-act="consider" data-dx="${esc(d.id)}" data-label="${esc(d.dx.en)}">${esc(t('addConsider'))}</button>`;
-    return `<div class="alert ${on ? 'ok' : 'info'}"><span>${on ? '✅' : '🔎'}</span><div style="flex:1"><span class="t">${esc(d.dx[lang] ?? d.dx.en)}</span>
-      <details><summary>${esc(t('whyT'))}</summary><p>${esc(d.why)}</p>${srcHtml(d.sources)}</details>${on ? `<small>${esc(t('considered'))}</small>` : ''}</div>${action}</div>`;
+      : `<button class="btn small primary" data-act="consider" data-dx="${esc(d.id)}" data-label="${esc(d.dx.en)}">${icon('plus')}${esc(t('addConsider'))}</button>`;
+    return `<div class="item ${on ? 'req' : ''}">${tile(on ? 'check' : 'alert', on ? 'green' : 'orange', 'sm')}<div class="body"><div class="title">${esc(L(d.dx))}</div>
+      <details class="why"><summary>${icon('info', { size: 14 })}${esc(t('whyT'))}</summary><p>${esc(d.why)}</p>${srcList(d.sources)}</details>${on ? `<div class="tiny">${esc(t('considered'))}</div>` : ''}</div><div class="acts">${action}</div></div>`;
   }).join('');
-  const scores = r.scores.map((s) => `<div class="kv"><span><b>${esc(s.name)}</b><br><small class="muted">${esc(s.why)}${s.source ? ` · ${esc(pack.sources[s.source]?.citation ?? '')}` : ''}</small></span></div>`).join('');
-  return `<main><div class="stack"><h2>${esc(t('thinkTitle'))}</h2>
-    <p class="muted"><b>${esc(t('aiLabel'))}</b> · ${esc(t('reviewDraft'))}</p>
+  return `<div class="stack"><div class="spread"><h2>${esc(t('thinkTitle'))}</h2><span class="badge ai">${esc(t('aiLabel'))}</span></div>
+    <p class="tiny">${esc(t('reviewDraft'))}</p>
     ${r.clusters.length ? `<h3>${esc(t('clusters'))}</h3>${clusters}` : ''}
-    <h3>${esc(t('mustNotMissT'))}</h3>${mnm}
-    ${r.scores.length ? `<h3>${esc(t('relevantScores'))}</h3>${scores}` : ''}
-    ${r.ageNote ? `<p class="muted">${esc(r.ageNote)}</p>` : ''}
-    <h3>${esc(t('specialtiesT'))}</h3><p>${r.specialties.map(esc).join(' · ')}</p></div></main>`;
+    <h3>${esc(t('mustNotMissT'))}</h3>${mnm || `<p class="muted">—</p>`}
+    <h3>${esc(t('specialtiesT'))}</h3><div class="row">${r.specialties.map((s) => `<span class="chip purple">${esc(s)}</span>`).join('')}</div></div>`;
 }
 
-function safetyView() {
-  const alerts = deriveAlerts(store.snapshotValues());
-  const missing = missingInformation(pack, store);
-  const check = documentationCheck(store, pack);
-  const LV = { danger: '🚨', warn: '⚠️', caution: '⚠️', info: 'ℹ️', error: '⛔' };
-  const alertsHtml = alerts.length ? alerts.map((a) => `<div class="alert ${a.level}"><span>${LV[a.level] ?? 'ℹ️'}</span><div><span class="t">${esc(a.text)}</span><small>${esc(a.basis)}</small></div></div>`).join('')
-    : `<div class="alert ok"><span>✅</span><span class="t">${esc(t('noAlerts'))}</span></div>`;
-  const missHtml = missing.map((m) => `<div class="alert caution"><span>❓</span><div style="flex:1"><span class="t">${esc(m.status)}: ${esc(m.label)}</span><small>${esc(m.why)}</small></div>
-      ${isFinal() ? '' : `<button class="btn small" data-act="ask-now" data-ask="${esc(m.ask)}">${esc(t('askNow'))}</button>`}</div>`).join('');
-  const checkHtml = `<div class="alert ${check.ready ? 'ok' : 'danger'}"><span>${check.ready ? '✅' : '⛔'}</span><span class="t">${esc(check.ready ? t('docReady') : t('docCheck'))}</span></div>
-    ${check.issues.map((i) => `<div class="alert ${i.level === 'error' ? 'danger' : i.level === 'warn' ? 'warn' : 'info'}"><span>${LV[i.level]}</span><span>${esc(i.text)}</span></div>`).join('')}`;
-  const versions = store.state.versions.map((v) => `<div class="kv"><span>${esc(v.label)} · ${esc(new Date(v.at).toLocaleString())}</span>
-      ${isFinal() ? '' : `<button class="btn small" data-act="restore-version" data-id="${v.id}">${esc(t('restore'))}</button>`}</div>`).join('');
-  return `<main><div class="stack"><h2>${esc(t('alerts'))}</h2>${alertsHtml}
-    ${missing.length ? `<h2>${esc(t('missing'))}</h2>${missHtml}` : ''}
-    <h2>${esc(t('docCheck'))}</h2>${checkHtml}
-    <h2>${esc(t('versions'))}</h2>${versions || `<p class="muted">—</p>`}
-    ${isFinal() ? '' : `<button class="btn block" data-act="save-version">${esc(t('saveVersion'))}</button>`}</div></main>`;
+// ---------------------------------------------------------------- case: TREAT (treatments + reassessment)
+const RESPONSES = [['improved', 'improved'], ['partial', 'partial'], ['no_change', 'noChange'], ['worse', 'worse'], ['new_problem', 'newProblem'], ['unable', 'unableAssess']];
+function treatView() {
+  const ro = isFinal();
+  const tx = store.timeline().filter((e) => e.type === 'treatment');
+  const re = store.timeline().filter((e) => e.type === 'reassessment');
+  return `<div class="stack">
+    <div class="card"><div class="card-h">${tile('syringe', 'purple')}<h4>${esc(t('treatmentsGiven'))}</h4></div>
+      ${tx.length ? `<ul class="tl">${tx.map((e) => `<li><time>${esc(formatTime(e.at))}</time><span>${esc(e.text)}</span></li>`).join('')}</ul>` : `<p class="muted">${esc(t('noEvents'))}</p>`}
+      ${ro ? '' : `<div class="field" style="margin-top:12px"><label for="txtext">${esc(t('eventText'))}</label><input id="txtext" type="text" data-enter="add-treatment" placeholder="${ui.lang === 'ar' ? 'مثال: محلول ملحي 0.9% ١ لتر وريدي' : 'e.g. 0.9% saline 1 L IV'}"></div>
+      <button class="btn primary block" data-act="add-treatment">${icon('plus')}${esc(t('addEvent'))}</button>`}</div>
+    <div class="card"><div class="card-h">${tile('refresh', 'green')}<h4>${esc(t('response'))}</h4></div>
+      ${ro ? '' : `<div class="answers">${RESPONSES.map(([v, k]) => `<button class="opt" data-act="reassess" data-v="${v}">${esc(t(k))}</button>`).join('')}</div>`}
+      ${re.length ? `<ul class="tl" style="margin-top:12px">${re.map((e) => `<li><time>${esc(formatTime(e.at))}</time><span>${esc(e.text)}</span></li>`).join('')}</ul>` : ''}</div>
+  </div>`;
 }
 
-const TABS = [['interview', '📋', 'tabInterview'], ['vitals', '🫀', 'tabVitals'], ['exam', '🩺', 'tabExam'], ['think', '🧠', 'tabThink'], ['note', '📄', 'tabNote'], ['timeline', '🕒', 'tabTimeline'], ['safety', '🛡️', 'tabSafety']];
+// ---------------------------------------------------------------- case: NOTE (documents, timeline, finalize)
+const DISPOSITIONS = ['Discharge home', 'Admit to ward', 'Admit to ICU', 'Observation', 'Transfer to another facility', 'Left against medical advice'];
+const EVENT_TYPES = [['treatment', 'evTreatment'], ['investigation', 'evInvestigation'], ['consult', 'evConsult'], ['reassessment', 'evReassess'], ['other', 'evOther']];
+function noteView() {
+  const ro = isFinal();
+  const modes = [['note', 'clinicalNote'], ['timeline', 'tabTimeline']];
+  const seg = `<div class="seg">${modes.map(([m, k]) => `<button class="${ui.noteMode === m ? 'on' : ''}" data-act="note-mode" data-m="${m}">${esc(t(k))}</button>`).join('')}</div>`;
+  if (ui.noteMode === 'timeline') {
+    const events = store.timeline();
+    const list = events.length ? `<ul class="tl">${events.map((e) => `<li><time>${esc(formatTime(e.at))}</time><span class="grow">${esc(e.text)}${e.corrections.length ? ` <span class="tiny">(${ui.lang === 'ar' ? 'تم تعديل الوقت' : 'time corrected'})</span>` : ''}</span>
+        ${ro ? '' : `<button class="btn small" data-act="event-time" data-id="${e.id}">${esc(t('changeTime'))}</button>`}</li>`).join('')}</ul>` : `<p class="muted">${esc(t('noEvents'))}</p>`;
+    const form = ro ? '' : `<div class="card flat stack"><div class="seg">${EVENT_TYPES.map(([v, k]) => `<button class="${ui.evType === v ? 'on' : ''}" data-act="ev-type" data-v="${v}">${esc(t(k))}</button>`).join('')}</div>
+        <div class="field"><label for="evtext">${esc(t('eventText'))}</label><input id="evtext" type="text" data-enter="add-event"></div>
+        <button class="btn primary block" data-act="add-event">${esc(t('addEvent'))}</button></div>`;
+    return `<div class="stack">${seg}${form}${list}<button class="btn block" data-act="copy" data-target="timeline" ${events.length ? '' : 'disabled'}>${icon('copy')}${esc(t('copy'))}</button></div>`;
+  }
+  const sections = buildSections(store, pack).filter((s) => !s.empty || s.core);
+  const secHtml = sections.map((s) => `<section class="sec"><header><h4>${esc(s.title)}</h4>
+      <button class="btn small" data-act="copy" data-target="${s.id}" ${s.empty ? 'disabled' : ''}>${icon('copy')}${esc(t('copy'))}</button></header>
+      ${s.lines.length ? s.lines.map((l) => `<p>${esc(l)}</p>`).join('') : `<p class="none">Not documented.</p>`}</section>`).join('');
+  const edit = ro ? '' : `<div class="card stack"><div class="card-h">${tile('edit', 'blue')}<h4>${esc(t('assessment'))}</h4></div>
+      <div class="field"><label for="imp">${esc(t('impression'))}</label><textarea id="imp" data-save="assessment.impression">${esc(store.getFact('assessment.impression') ?? '')}</textarea></div>
+      <div class="field"><label for="dx">${esc(t('diagnosis'))}</label><input id="dx" type="text" data-save="assessment.diagnosis" value="${esc(store.getFact('assessment.diagnosis') ?? '')}"></div>
+      <div class="field"><label>${esc(t('disposition'))}</label><div class="answers">${DISPOSITIONS.map((d) => `<button class="opt ${store.getFact('disposition.decision') === d ? 'on' : ''}" data-act="dispo" data-v="${esc(d)}">${esc(d)}</button>`).join('')}</div></div>
+      <button class="btn green block" data-act="finalize">${icon('check')}${esc(t('finalize'))}</button></div>`;
+  const fin = ro ? `<div class="alert ok">${icon('check')}<span class="t">${esc(t('caseComplete'))}</span></div><button class="btn block" data-act="reopen">${esc(t('reopen'))}</button>` : '';
+  return `<div class="stack">${seg}${fin}<div>${secHtml}</div>${edit}</div>`;
+}
+
 function caseView() {
-  const views = { interview: interviewView, vitals: vitalsView, exam: examView, think: thinkView, note: noteView, timeline: timelineView, safety: safetyView };
-  const nav = `<nav class="nav" aria-label="Case sections"><div>${TABS.map(([k, ic, lk]) =>
-    `<button class="${ui.tab === k ? 'on' : ''}" data-act="tab" data-tab="${k}" aria-current="${ui.tab === k}"><span class="ico">${ic}</span>${esc(t(lk))}</button>`).join('')}</div></nav>`;
-  return views[ui.tab]() + nav;
+  const views = { now: nowView, history: historyView, exam: examView, workup: workupView, think: thinkView, treat: treatView, note: noteView };
+  const body = (views[ui.tab] ?? nowView)();
+  return `${patientStrip()}<div class="shell">${navHtml()}<main><div class="content">${body}</div></main>${sidePanel()}</div>
+    <div class="fab"><button class="btn primary" data-act="copy" data-target="complete">${icon('copy')}${esc(t('copyAll'))}</button></div>`;
 }
 
+// ---------------------------------------------------------------- library (calculator mode)
+function libraryView() {
+  const q = ui.librarySearch.trim().toLowerCase();
+  const list = SCORES.filter((s) => !q || s.name.toLowerCase().includes(q) || s.use.toLowerCase().includes(q));
+  return `<main><div class="content stack"><h2>${esc(t('scoreLibrary'))}</h2>
+    <div class="notice">${icon('info')}<span>${esc(t('scratch'))}</span></div>
+    <label class="search">${icon('search')}<input id="lsearch" type="search" data-bind="lsearch" value="${esc(ui.librarySearch)}" placeholder="${esc(t('searchAll'))}" aria-label="${esc(t('searchAll'))}"></label>
+    <div id="llist">${list.map((s) => `<button class="scorecard" data-act="open-score" data-id="${s.id}" data-scratch="1">${tile('calc', 'teal', 'sm')}<span class="body"><span class="title">${esc(s.name)}</span><span class="sub" style="display:block">${esc(s.use)}</span></span>${icon('chevron')}</button>`).join('')}</div></div></main>`;
+}
+
+// ================================================================ sheets (bottom sheets that re-render live)
+function sheetHtml() {
+  const sh = ui.sheet;
+  if (!sh) return '';
+  let inner = '';
+  if (sh.type === 'score') inner = scoreSheet(sh);
+  else if (sh.type === 'vital') inner = vitalSheet(sh);
+  else if (sh.type === 'ask') inner = `${questionHtml(sh.key, { st: S() })}`;
+  else if (sh.type === 'search') inner = searchSheet();
+  return `<div class="modal-bg" data-act="close-sheet-bg"><div class="modal" role="dialog" aria-modal="true"><div class="grab"></div>
+    <div class="spread" style="margin-bottom:8px"><span></span><button class="iconbtn" data-act="close-sheet" aria-label="${esc(t('close'))}">${icon('x')}</button></div>${inner}</div></div>`;
+}
+
+function scoreSheet(sh) {
+  const st = S();
+  const def = SCORE_BY_ID[sh.id];
+  const res = evaluateById(st, sh.id);
+  const next = sh.asking && !isFinalFor(st) ? nextScoreInput(pack, st, sh.id) : null;
+  if (next && ['pack', 'fact', 'vital'].includes(next.kind)) {
+    return `<div class="stack"><div class="row">${tile('calc', 'teal', 'sm')}<b>${esc(def.name)}</b>${pillFor(res)}</div>${questionHtml(next.key, { st })}
+      <button class="btn ghost block" data-act="score-stop">${esc(t('close'))}</button></div>`;
+  }
+  const special = next ? `<div class="alert info">${icon('info')}<span>${esc(next.kind === 'gcs' ? t('gcs') : next.kind === 'o2' ? t('oxygen') : t('age'))} — ${esc(t('tapToEnter'))}</span></div>
+      <button class="btn block" data-act="score-goto" data-kind="${next.kind}">${esc(next.kind === 'patient' ? t('age') : t('tabExam'))}</button>` : '';
+  const total = res.total === null || res.total === undefined ? '' : (Number.isInteger(res.total) ? res.total : res.total.toFixed(1));
+  const comps = res.components.map((c) => `<div class="comp"><span class="pts ${c.points === null ? 'miss' : c.points !== 0 ? 'pos' : ''}">${c.points === null ? esc(c.shown) : (c.points > 0 ? `+${c.points}` : c.points)}</span>
+      <span class="grow">${esc(c.label)}</span><span class="tiny">${c.points === null ? '' : esc(c.shown)}</span></div>`).join('');
+  return `<div class="stack">
+    <div class="row">${tile('calc', 'teal', 'md')}<div class="grow"><h2>${esc(def.name)}</h2><div class="tiny">${esc(def.use)}</div></div></div>
+    ${sh.scratch ? `<div class="notice">${icon('info')}<span>${esc(t('scratch'))}</span></div>` : ''}
+    <div class="card flat"><div class="spread"><span class="big-result">${esc(total || (res.complete ? '' : '—'))}</span>${pillFor(res)}</div>
+      ${res.complete && res.result.meaning ? `<p style="margin-top:8px">${esc(res.result.meaning)}</p>` : ''}${!res.applicable && res.reason ? `<p class="muted" style="margin-top:8px">${esc(res.reason)}</p>` : ''}</div>
+    ${special}
+    ${res.applicable && !res.complete && !next && !res.unknown.length ? '' : ''}
+    ${res.applicable && !res.complete && !special && res.missing.length ? `<button class="btn primary block" data-act="score-ask" data-id="${sh.id}">${icon('chevron')}${esc(t('completeScore'))} (${res.missing.length + res.unknown.length})</button>` : ''}
+    ${comps ? `<h3>${esc(t('components'))}</h3><div>${comps}</div>` : ''}
+    <h3>${esc(t('limitations'))}</h3><ul class="muted" style="margin:0;padding-inline-start:18px">${def.limitations.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>
+    <h3>${esc(t('sourcesT'))}</h3>${srcList(def.sources)}<div class="tiny">${esc(t('versionT'))}: ${esc(def.version)}</div>
+    ${res.complete || res.components.length ? `<button class="btn block" data-act="copy-score" data-id="${sh.id}">${icon('copy')}${esc(t('copyScore'))}</button>` : ''}
+  </div>`;
+}
+const isFinalFor = (st) => st?.state.status === 'final';
+
+function vitalSheet(sh) {
+  const k = sh.k;
+  const isBp = k === 'bp';
+  const cur = isBp ? [store.getFact('vitals.sbp'), store.getFact('vitals.dbp')] : [store.getFact(`vitals.${k}`)];
+  const has = cur.every((x) => typeof x === 'number');
+  const mode = has ? sh.mode : 'new';
+  const label = t(isBp ? 'bp' : k);
+  const unit = isBp ? 'mmHg' : UNITS[k];
+  const inputs = isBp
+    ? `<div class="row"><input id="sv-a" class="grow" type="number" inputmode="decimal" placeholder="${esc(t('sbp'))}" aria-label="${esc(t('sbp'))}" value="${mode === 'correct' ? esc(cur[0] ?? '') : ''}" data-enter="vital-save">
+       <b>/</b><input id="sv-b" class="grow" type="number" inputmode="decimal" placeholder="${esc(t('dbp'))}" aria-label="${esc(t('dbp'))}" value="${mode === 'correct' ? esc(cur[1] ?? '') : ''}" data-enter="vital-save"><span class="unit">${unit}</span></div>`
+    : `<div class="numrow"><input id="sv-a" type="number" step="any" inputmode="decimal" aria-label="${esc(label)}" value="${mode === 'correct' ? esc(cur[0] ?? '') : ''}" data-enter="vital-save"><span class="unit">${esc(unit)}</span></div>`;
+  const hist = (store.getFactRecord(isBp ? 'vitals.sbp' : `vitals.${k}`)?.history ?? []);
+  const histHtml = hist.length ? `<h3>${esc(t('earlier'))}</h3>${hist.map((h) => `<div class="kv"><span>${esc(formatTime(h.at))} — ${esc(h.value)}</span><span class="tiny">${esc(h.status)}${h.reason ? ` · ${esc(h.reason)}` : ''}</span></div>`).join('')}` : '';
+  const actions = has && !mode
+    ? `<button class="btn primary block" data-act="vital-mode" data-m="new">${icon('plus')}${esc(t('newReading'))}</button>
+       <button class="btn block" data-act="vital-mode" data-m="correct">${icon('edit')}${esc(t('correctMeasurement'))}</button>
+       <button class="btn danger block" data-act="vital-mode" data-m="remove">${icon('trash')}${esc(t('removeCalc'))}</button>`
+    : mode === 'remove'
+      ? `<div class="field"><label for="sv-r">${esc(t('reason'))}</label><input id="sv-r" type="text"></div><button class="btn danger block" data-act="vital-remove">${esc(t('confirm'))}</button>`
+      : `${inputs}${mode === 'correct' ? `<div class="field"><label for="sv-r">${esc(t('reason'))}</label><input id="sv-r" type="text"></div>` : ''}
+         <button class="btn primary block" data-act="vital-save">${icon('check')}${esc(t('save'))}</button>`;
+  return `<div class="stack"><div class="row">${tile(VT.find((x) => x[0] === k)?.[1] ?? 'activity', VT.find((x) => x[0] === k)?.[2] ?? 'blue')}<div class="grow"><h2>${esc(label)}</h2>
+    ${has ? `<div class="big-result">${esc(cur.join('/'))}<small class="tiny"> ${esc(unit)}</small></div>` : ''}</div></div>
+    ${mode === 'correct' ? `<p class="muted">${esc(ui.lang === 'ar' ? 'القيمة السابقة تُحفظ في السجل ولن تُستخدم في الحسابات الحالية.' : 'The previous value is kept in the record and stops being used in current calculations.')}</p>` : ''}
+    ${actions}${histHtml}</div>`;
+}
+
+function searchSheet() {
+  const q = ui.globalSearch.trim().toLowerCase();
+  const comps = q ? pack.complaints.filter((c) => c.label.en.toLowerCase().includes(q) || c.label.ar.includes(q) || c.synonyms.some((s) => s.toLowerCase().includes(q))) : [];
+  const scs = q ? SCORES.filter((s) => s.name.toLowerCase().includes(q) || s.use.toLowerCase().includes(q)) : [];
+  const invs = q ? (pack.investigationCatalog ?? []).filter((x) => x.label.en.toLowerCase().includes(q) || x.label.ar.includes(q)) : [];
+  const inCase = store && ui.screen === 'case';
+  return `<div class="stack"><label class="search">${icon('search')}<input id="gsearch" type="search" data-bind="gsearch" value="${esc(ui.globalSearch)}" placeholder="${esc(t('searchPlaceholder'))}" aria-label="${esc(t('searchAll'))}"></label>
+    <div id="gresults">${searchResults(comps, scs, invs, inCase, q)}</div></div>`;
+}
+function searchResults(comps, scs, invs, inCase, q) {
+  if (!q) return '';
+  if (!comps.length && !scs.length && !invs.length) return `<p class="muted">${esc(t('noResults'))}</p>`;
+  return `${comps.map((c) => `<button class="scorecard" data-act="search-complaint" data-key="${c.key}">${cTile(c, 'sm')}<span class="body"><span class="title">${esc(L(c.label))}</span><span class="sub" style="display:block">${esc(inCase ? t('addComplaint') : t('newPatient'))}</span></span>${icon('plus')}</button>`).join('')}
+    ${scs.map((s) => `<button class="scorecard" data-act="open-score" data-id="${s.id}" ${inCase ? '' : 'data-scratch="1"'}>${tile('calc', 'teal', 'sm')}<span class="body"><span class="title">${esc(s.name)}</span><span class="sub" style="display:block">${esc(s.use)}</span></span>${icon('chevron')}</button>`).join('')}
+    ${invs.map((x) => `<div class="scorecard">${tile((KIND_ICON[x.kind] ?? KIND_ICON.lab)[0], (KIND_ICON[x.kind] ?? KIND_ICON.lab)[1], 'sm')}<span class="body"><span class="title">${esc(L(x.label))}</span></span></div>`).join('')}`;
+}
+
+// ================================================================ render
 function render() {
   try {
     const root = $('#app');
     document.documentElement.lang = ui.lang;
     document.documentElement.dir = ui.lang === 'ar' ? 'rtl' : 'ltr';
     const active = document.activeElement;
-    const keep = active && active.id && root.contains(active) ? { id: active.id, s: active.selectionStart } : null;
+    const keep = active && active.id && (root.contains(active) || $('#sheet').contains(active)) ? { id: active.id, s: active.selectionStart } : null;
     let body = '';
-    if (ui.screen === 'home' || !store) body = homeView();
+    if (ui.screen === 'library') body = libraryView();
+    else if (ui.screen === 'home' || !store) body = homeView();
     else if (ui.screen === 'intake') body = intakeView();
     else if (ui.screen === 'complaints') body = complaintsView();
     else body = caseView();
     root.innerHTML = `${topBar()}${body}`;
-    const mainEl = root.querySelector('main');
+    const mainEl = root.querySelector('main .content') ?? root.querySelector('main');
     if (mainEl) mainEl.insertAdjacentHTML('beforeend', `<div class="wm" aria-hidden="true">${esc(t('watermark'))}</div>`);
+    $('#sheet').innerHTML = sheetHtml();
     if (keep) { const el = document.getElementById(keep.id); if (el) { el.focus(); try { el.setSelectionRange(keep.s, keep.s); } catch { /* not a text field */ } } }
+    else if (ui.sheet) { const f = $('#sheet input'); if (f && f.type !== 'search') f.focus(); }
   } catch (e) { fail(e); }
 }
 
-// ---------------------------------------------------------------- actions
+// ================================================================ actions
 const num = (v) => (v === '' || v === null || v === undefined ? NaN : Number(v));
 
 async function conflictFlow(key, value, opts, labelOf) {
@@ -419,41 +697,65 @@ async function numberDialog(title, label, withReason, current) {
   });
 }
 
-async function setVital(k) {
-  const el = $(`#v-${k}`);
-  const v = num(el?.value);
-  const chk = validateVital(k, v);
-  if (!chk.ok) { toast(chk.message, true); return; }
-  store.setFact(`vitals.${k}`, v, { origin: 'measurement' });
+/** Origin of an answer: what the patient reports vs what the clinician measures or judges. */
+function originFor(key) {
+  if (key.startsWith('vitals.') || key.startsWith('gcs.')) return 'measurement';
+  if (key.startsWith('lab.') || key.startsWith('ecg.')) return 'investigation';
+  if (/^(exam|judg)\./.test(key)) return 'clinician';
+  return 'patient';
 }
-async function setBp() {
-  const sbp = num($('#v-sbp')?.value);
-  const dbp = num($('#v-dbp')?.value);
-  for (const [k, v] of [['sbp', sbp], ['dbp', dbp]]) { const c = validateVital(k, v); if (!c.ok) { toast(c.message, true); return; } }
-  const pair = checkBpPair(sbp, dbp);
-  if (!pair.ok) {
-    const r = await ask({ title: t('bp'), body: `<p>${esc(pair.message)}</p>`, actions: [{ id: 'ok', label: t('confirm'), kind: 'primary' }, { id: 'cancel', label: t('cancel') }] });
-    if (!r || r.action !== 'ok') return;
-  }
-  store.setFact('vitals.sbp', sbp, { origin: 'measurement' });
-  store.setFact('vitals.dbp', dbp, { origin: 'measurement' });
+function setAnswer(key, value) {
+  const st = S();
+  const editing = ui.editKey === key || st.getFact(key) !== undefined;
+  st.setFact(key, value, { origin: originFor(key), replace: editing, reason: editing ? 'Updated by clinician' : undefined });
+  ui.editKey = null;
+  if (ui.sheet?.type === 'ask') ui.sheet = null;
+  render();
 }
 
-async function bpPairDialog(withReason, title) {
-  const r = await ask({
-    title,
-    fields: [{ name: 'sbp', label: t('sbp'), type: 'number', value: store.getFact('vitals.sbp') }, { name: 'dbp', label: t('dbp'), type: 'number', value: store.getFact('vitals.dbp') }, ...(withReason ? [{ name: 'reason', label: t('reason') }] : [])],
-    actions: [{ id: 'ok', label: t('confirm'), kind: 'primary', needs: ['sbp', 'dbp', ...(withReason ? ['reason'] : [])] }, { id: 'cancel', label: t('cancel') }],
-  });
-  if (!r || r.action !== 'ok') return null;
-  const sbp = num(r.values.sbp); const dbp = num(r.values.dbp);
-  for (const [k, v] of [['sbp', sbp], ['dbp', dbp]]) { const c = validateVital(k, v); if (!c.ok) { toast(c.message, true); return null; } }
-  return { sbp, dbp, reason: r.values.reason };
+function validateNumber(key, v) {
+  const sp = specFor(key);
+  const lim = (sp.def ?? {}).limits;
+  if (Number.isNaN(v)) return t('enterNumber');
+  if (lim && (v < lim[0] || v > lim[1])) return `${v} is outside the plausible range ${lim[0]}–${lim[1]}. Check the entry.`;
+  return null;
+}
+
+async function saveVital() {
+  const k = ui.sheet.k;
+  const has = k === 'bp' ? typeof store.getFact('vitals.sbp') === 'number' : typeof store.getFact(`vitals.${k}`) === 'number';
+  const mode = has ? ui.sheet.mode : 'new';
+  const reasonTxt = ($('#sv-r')?.value ?? '').trim();
+  if (mode === 'correct' && !reasonTxt) { toast(t('reasonRequired'), true); return; }
+  const a = num($('#sv-a')?.value);
+  if (k === 'bp') {
+    const b = num($('#sv-b')?.value);
+    for (const [kk, v] of [['sbp', a], ['dbp', b]]) { const c = validateVital(kk, v); if (!c.ok) { toast(c.message, true); return; } }
+    const pair = checkBpPair(a, b);
+    if (!pair.ok) {
+      const r = await ask({ title: t('bp'), body: `<p>${esc(pair.message)}</p>`, actions: [{ id: 'ok', label: t('confirm'), kind: 'primary' }, { id: 'cancel', label: t('cancel') }] });
+      if (!r || r.action !== 'ok') return;
+    }
+    if (mode === 'correct') { store.correctFact('vitals.sbp', a, reasonTxt); store.correctFact('vitals.dbp', b, reasonTxt); }
+    else {
+      store.setFact('vitals.sbp', a, { origin: 'measurement', replace: has, reason: 'Repeat measurement' });
+      store.setFact('vitals.dbp', b, { origin: 'measurement', replace: has, reason: 'Repeat measurement' });
+    }
+  } else {
+    const c = validateVital(k, a); if (!c.ok) { toast(c.message, true); return; }
+    if (mode === 'correct') store.correctFact(`vitals.${k}`, a, reasonTxt);
+    else store.setFact(`vitals.${k}`, a, { origin: 'measurement', replace: has, reason: 'Repeat measurement' });
+  }
+  ui.sheet = null; render();
 }
 
 const handlers = {
   'lang': () => { ui.lang = ui.lang === 'ar' ? 'en' : 'ar'; try { localStorage.setItem('ufc-lang', ui.lang); } catch { /* ignore */ } render(); },
-  'home': async () => { await autosave?.flush(); await refreshCases(); ui.screen = 'home'; render(); },
+  'home': async () => { await autosave?.flush(); await refreshCases(); ui.screen = 'home'; ui.sheet = null; render(); },
+  'library': () => { scratch = new CaseStore(createCase({ language: ui.lang })); ui.screen = 'library'; render(); },
+  'open-search': () => { ui.globalSearch = ''; ui.sheet = { type: 'search' }; render(); },
+  'close-sheet': () => { ui.sheet = null; render(); },
+  'close-sheet-bg': (d, e) => { if (e.target.matches('.modal-bg')) { ui.sheet = null; render(); } },
   'new-case': () => { ui.intake = { age: '', sex: null, text: '' }; adopt(new CaseStore(createCase({ language: ui.lang })), 'intake'); },
   'demo': () => adopt(buildDemoStore(), 'case'),
   'open-case': async (d) => {
@@ -467,6 +769,14 @@ const handlers = {
     await persistence.deleteCase(d.id); await refreshCases(); render();
   },
   'sex': (d) => { ui.intake.sex = d.v; render(); },
+  'dictate': () => {
+    const R = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!R) return;
+    const rec = new R(); rec.lang = ui.lang === 'ar' ? 'ar-SA' : 'en-US'; rec.interimResults = false;
+    rec.onresult = (ev) => { ui.intake.text = `${ui.intake.text} ${ev.results[0][0].transcript}`.trim(); render(); };
+    rec.onerror = () => toast('Dictation unavailable.', true);
+    rec.start(); toast(t('dictate'));
+  },
   'intake-submit': () => {
     const age = num(ui.intake.age);
     const ageUnknown = ui.intake.age === '';
@@ -477,44 +787,62 @@ const handlers = {
     if (ui.intake.text.trim()) store.setFact('patient.presentation', ui.intake.text.trim(), { origin: 'clinician' });
     ui.screen = 'complaints'; render();
   },
-  'toggle-complaint': (d) => {
-    if (store.activeComplaints().includes(d.key)) store.resolveComplaint(d.key, 'Deselected'); else store.addComplaint(d.key);
+  'toggle-complaint': (d) => { if (store.activeComplaints().includes(d.key)) store.resolveComplaint(d.key, 'Deselected'); else store.addComplaint(d.key); },
+  'search-complaint': (d) => {
+    if (store && ui.screen === 'case' && !isFinal()) { store.addComplaint(d.key); ui.sheet = null; ui.tab = 'history'; render(); return; }
+    ui.intake = { age: '', sex: null, text: '' };
+    adopt(new CaseStore(createCase({ language: ui.lang })), 'intake');
+    store.addComplaint(d.key);
   },
-  'start-interview': () => { ui.screen = 'case'; ui.tab = 'interview'; render(); },
+  'start-interview': () => { ui.screen = 'case'; ui.tab = 'history'; render(); },
   'goto-complaints': () => { ui.screen = 'complaints'; render(); },
-  'tab': (d) => { ui.tab = d.tab; ui.editQ = null; render(); },
+  'tab': (d) => { ui.tab = d.tab; ui.editKey = null; ui.sheet = null; render(); window.scrollTo?.(0, 0); },
   'answer': (d) => {
-    const q = pack.questions.find((x) => x.id === d.q);
+    const sp = specFor(d.key);
+    const def = sp.question ?? sp.def;
     let v = d.v;
-    if (q.type === 'scale') v = Number(v);
-    const opt = q.options?.find((o) => o.v === v);
-    if (opt?.needsText) { ui.pendingText = { q: q.id, v, text: '' }; render(); return; }
-    const editing = ui.editQ === q.id;
-    store.setFact(q.fact, v, { origin: 'patient', replace: editing, reason: editing ? 'Updated by clinician' : undefined });
-    ui.editQ = null;
+    if (def.type === 'choice') {
+      const o = def.options[Number(d.i)];
+      if (o.needsText) { ui.pendingText = { key: d.key, i: Number(d.i), text: '' }; render(); return; }
+      v = o.v;
+    }
+    if (def.type === 'scale') v = Number(v);
+    setAnswer(d.key, v);
   },
   'answer-text': (d) => {
-    const q = pack.questions.find((x) => x.id === d.q);
+    const sp = specFor(d.key); const def = sp.question ?? sp.def;
     const text = ($('#ptext')?.value ?? '').trim();
     if (!text) { toast(t('reasonRequired'), true); return; }
-    store.setFact(q.fact, ui.pendingText.v, { origin: 'patient', replace: true, reason: 'Updated by clinician' });
-    store.setFact(`${q.fact}.detail`, text, { origin: 'patient', replace: true, reason: 'Updated by clinician' });
-    ui.pendingText = null; ui.editQ = null; render();
+    const st = S();
+    st.setFact(d.key, def.options[ui.pendingText.i].v, { origin: 'patient', replace: true, reason: 'Updated by clinician' });
+    st.setFact(`${d.key}.detail`, text, { origin: 'patient', replace: true, reason: 'Updated by clinician' });
+    ui.pendingText = null; ui.editKey = null; render();
   },
   'answer-duration': (d) => {
-    const q = pack.questions.find((x) => x.id === d.q);
     let val;
     if (d.custom) { const n = num(ui.custom.n); if (!(n > 0)) { toast(t('custom'), true); return; } val = { n, unit: ui.custom.unit }; } else val = { n: Number(d.n), unit: d.unit };
-    const editing = ui.editQ === q.id;
-    store.setFact(q.fact, val, { origin: 'patient', replace: editing, reason: editing ? 'Updated by clinician' : undefined });
-    ui.editQ = null;
+    setAnswer(d.key, val);
+  },
+  'answer-num': (d) => {
+    const v = num($('#num-input')?.value);
+    const err = validateNumber(d.key, v);
+    if (err) { toast(err, true); return; }
+    setAnswer(d.key, v);
   },
   'custom-unit': (d) => { ui.custom.unit = d.unit; render(); },
-  'unknown-q': (d) => { store.markUnknown(pack.questions.find((x) => x.id === d.q).fact, 'patient'); ui.editQ = null; },
-  'edit-q': (d) => { ui.editQ = d.q; ui.pendingText = null; ui.tab = 'interview'; render(); },
-  'cancel-edit': () => { ui.editQ = null; ui.pendingText = null; render(); },
-  'set-vital': (d) => setVital(d.k),
-  'set-bp': () => setBp(),
+  'unknown-q': (d) => { S().markUnknown(d.key, originFor(d.key) === 'patient' ? 'patient' : 'clinician'); ui.editKey = null; if (ui.sheet?.type === 'ask') ui.sheet = null; render(); },
+  'edit-q': (d) => { ui.editKey = d.key; ui.pendingText = null; ui.tab = 'history'; render(); },
+  'cancel-edit': () => { ui.editKey = null; ui.pendingText = null; render(); },
+  'ask-fact': (d) => { ui.sheet = { type: 'ask', key: d.key }; render(); },
+  'vital': (d) => { ui.sheet = { type: 'vital', k: d.k, mode: null }; render(); },
+  'vital-mode': (d) => { ui.sheet.mode = d.m; render(); },
+  'vital-save': () => saveVital(),
+  'vital-remove': () => {
+    const r = ($('#sv-r')?.value ?? '').trim();
+    if (!r) { toast(t('reasonRequired'), true); return; }
+    if (ui.sheet.k === 'bp') { store.removeFact('vitals.sbp', r); store.removeFact('vitals.dbp', r); } else store.removeFact(`vitals.${ui.sheet.k}`, r);
+    ui.sheet = null; render();
+  },
   'o2': (d) => {
     const cur = store.getFact('vitals.o2device');
     store.setFact('vitals.o2device', d.v, { origin: 'measurement', replace: cur !== undefined && cur !== d.v, reason: 'Changed oxygen device' });
@@ -524,50 +852,53 @@ const handlers = {
     const cur = store.getFact(key);
     store.setFact(key, Number(d.v), { origin: 'measurement', replace: cur !== undefined, reason: 'Reassessed' });
   },
-  'new-reading': async (d) => {
-    if (d.key === 'bp') {
-      const r = await bpPairDialog(false, t('newReading')); if (!r) return;
-      store.setFact('vitals.sbp', r.sbp, { origin: 'measurement', replace: true, reason: 'Repeat measurement' });
-      store.setFact('vitals.dbp', r.dbp, { origin: 'measurement', replace: true, reason: 'Repeat measurement' });
-      return;
-    }
-    const k = d.key.split('.')[1];
-    const r = await numberDialog(t('newReading'), t(k), false, ''); if (!r || r.action !== 'ok') return;
-    const v = num(r.values.value); const c = validateVital(k, v); if (!c.ok) { toast(c.message, true); return; }
-    store.setFact(d.key, v, { origin: 'measurement', replace: true, reason: 'Repeat measurement' });
-  },
-  'correct': async (d) => {
-    if (d.key === 'bp') {
-      const r = await bpPairDialog(true, t('correctMeasurement')); if (!r) return;
-      store.correctFact('vitals.sbp', r.sbp, r.reason); store.correctFact('vitals.dbp', r.dbp, r.reason);
-      return;
-    }
-    const k = d.key.split('.')[1];
-    const r = await numberDialog(t('correctMeasurement'), t(k), true, store.getFact(d.key)); if (!r || r.action !== 'ok') return;
-    const v = num(r.values.value); const c = validateVital(k, v); if (!c.ok) { toast(c.message, true); return; }
-    store.correctFact(d.key, v, r.values.reason);
-  },
-  'remove': async (d) => {
-    const r = await ask({ title: t('removeCalc'), fields: [{ name: 'reason', label: t('reason') }], actions: [{ id: 'ok', label: t('confirm'), kind: 'danger', needs: ['reason'] }, { id: 'cancel', label: t('cancel') }] });
-    if (!r || r.action !== 'ok') return;
-    if (d.key === 'bp') { store.removeFact('vitals.sbp', r.values.reason); store.removeFact('vitals.dbp', r.values.reason); } else store.removeFact(d.key, r.values.reason);
-  },
   'exam': async (d) => {
     const f = examFindings.find((x) => x.fact === d.f);
     if (store.getFact(f.fact)) { store.removeFact(f.fact, 'Unselected'); return; }
     const labelOf = (key) => L(examFindings.find((x) => x.fact === key)?.label);
     await conflictFlow(f.fact, 'present', { origin: 'clinician', excludes: f.excludes }, labelOf);
   },
+  'open-score': (d) => {
+    const isScratch = !!d.scratch || !store || ui.screen !== 'case';
+    if (isScratch && !scratch) scratch = new CaseStore(createCase({ language: ui.lang }));
+    ui.sheet = { type: 'score', id: d.id, scratch: isScratch, asking: false }; render();
+  },
+  'score-ask': () => { ui.sheet.asking = true; render(); },
+  'score-stop': () => { ui.sheet.asking = false; render(); },
+  'score-goto': (d) => {
+    if (ui.sheet?.scratch) { toast(d.kind === 'patient' ? t('age') : t('tabExam')); if (d.kind === 'patient') { handlers['scratch-age'](); } return; }
+    ui.sheet = null;
+    if (d.kind === 'patient') { handlers['edit-demo']({ kind: 'age' }); return; }
+    ui.tab = 'exam'; render();
+  },
+  'scratch-age': async () => {
+    const r = await numberDialog(t('age'), t('age'), false, ''); if (!r || r.action !== 'ok') return;
+    const v = num(r.values.value); if (!(v >= 0 && v <= 120)) { toast('Age must be 0–120.', true); return; }
+    scratch.setFact('patient.age', v, { origin: 'clinician', replace: true }); render();
+  },
+  'copy-score': (d) => writeClipboard(scoreText(evaluateById(S(), d.id))),
+  'inv-request': (d) => {
+    const cat = (pack.investigationCatalog ?? []).find((x) => x.id === d.id);
+    store.setFact(invKey(d.id), 'requested', { origin: 'clinician' });
+    store.addEvent({ type: 'investigation', text: `${cat?.doc ?? d.id} requested` });
+  },
+  'inv-undo': (d) => { store.removeFact(invKey(d.id), 'Request withdrawn'); },
   'dispo': (d) => {
     const cur = store.getFact('disposition.decision');
     store.setFact('disposition.decision', d.v, { origin: 'clinician', replace: cur !== undefined, reason: 'Updated by clinician' });
   },
   'copy': (d) => copy(d.target),
+  'note-mode': (d) => { ui.noteMode = d.m; render(); },
   'ev-type': (d) => { ui.evType = d.v; render(); },
-  'add-event': () => {
-    const el = $('#evtext'); const text = (el?.value ?? '').trim();
-    if (!text) return;
-    store.addEvent({ type: ui.evType, text });
+  'add-event': () => { const text = ($('#evtext')?.value ?? '').trim(); if (text) store.addEvent({ type: ui.evType, text }); },
+  'add-treatment': () => { const text = ($('#txtext')?.value ?? '').trim(); if (text) store.addEvent({ type: 'treatment', text }); },
+  'reassess': (d) => {
+    const TXT = { improved: 'Patient reassessed following treatment with symptomatic improvement.', partial: 'Patient reassessed following treatment with partial symptomatic improvement.',
+      no_change: 'Patient reassessed following treatment with no change in symptoms.', worse: 'Patient reassessed following treatment; condition has worsened.',
+      new_problem: 'Patient reassessed; a new problem has been identified.', unable: 'Reassessment attempted; response could not be assessed.' };
+    const cur = store.getFact('reassess.response');
+    store.setFact('reassess.response', d.v, { origin: 'clinician', replace: cur !== undefined, reason: 'Reassessed' });
+    store.addEvent({ type: 'reassessment', text: TXT[d.v] });
   },
   'event-time': async (d) => {
     const ev = store.state.events.find((e) => e.id === d.id);
@@ -582,8 +913,8 @@ const handlers = {
   'ask-now': (d) => {
     if (d.ask === 'patient') { handlers['edit-demo']({ kind: store.isAnswered('patient.age') ? 'sex' : 'age' }); return; }
     if (d.ask === 'complaint') { ui.screen = 'complaints'; render(); return; }
-    if (d.ask === 'vitals') { ui.tab = 'vitals'; render(); return; }
-    ui.editQ = d.ask; ui.tab = 'interview'; render();
+    if (d.ask === 'vitals') { ui.tab = 'exam'; render(); return; }
+    ui.editKey = d.key; ui.tab = 'history'; render();
   },
   'edit-demo': async (d) => {
     if (d.kind === 'age') {
@@ -599,8 +930,8 @@ const handlers = {
       if (cur === undefined) store.setFact('patient.sex', r.action, { origin: 'clinician', replace: true }); else if (cur !== r.action) store.correctFact('patient.sex', r.action, r.values.reason);
     }
   },
-  'consider': (d) => { store.setFact(considerKey(d.dx), d.label, { origin: 'ai_confirmed', reason: 'Added to assessment by clinician' }); render(); },
-  'unconsider': (d) => { store.removeFact(considerKey(d.dx), 'Removed by clinician'); render(); },
+  'consider': (d) => { store.setFact(considerKey(d.dx), d.label, { origin: 'ai_confirmed', reason: 'Added to assessment by clinician' }); },
+  'unconsider': (d) => { store.removeFact(considerKey(d.dx), 'Removed by clinician'); },
   'save-version': () => { store.saveVersion('updated'); toast(t('saveVersion')); render(); },
   'restore-version': async (d) => {
     const r = await ask({ title: t('restore'), actions: [{ id: 'ok', label: t('restore'), kind: 'primary' }, { id: 'cancel', label: t('cancel') }] });
@@ -608,7 +939,7 @@ const handlers = {
   },
   'finalize': async () => {
     const check = documentationCheck(store, pack);
-    const body = check.issues.map((i) => `<div class="alert ${i.level === 'error' ? 'danger' : i.level === 'warn' ? 'warn' : 'info'}">${esc(i.text)}</div>`).join('');
+    const body = check.issues.map((i) => `<div class="alert ${i.level === 'error' ? 'danger' : i.level === 'warn' ? 'warn' : 'info'}">${icon(i.level === 'error' ? 'alert' : 'info')}<span>${esc(i.text)}</span></div>`).join('');
     const r = await ask({ title: check.ready ? t('finalize') : t('docCheck'), body,
       actions: check.ready ? [{ id: 'ok', label: t('finalize'), kind: 'green' }, { id: 'cancel', label: t('cancel') }] : [{ id: 'cancel', label: t('close') }] });
     if (r?.action === 'ok') { store.finalize(); ui.tab = 'note'; render(); }
@@ -622,7 +953,7 @@ const handlers = {
     const blob = new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `clinical-copilot-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `clinical-copilot-backup-${new Date().toISOString().replace(/[:T]/g, '-').slice(0, 16)}.json`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   },
@@ -634,7 +965,8 @@ async function onClick(e) {
   if (!el) return;
   const fn = handlers[el.dataset.act];
   if (!fn) return;
-  try { await fn(el.dataset); } catch (err) { fail(err); }
+  if (el.disabled) return;
+  try { await fn(el.dataset, e); } catch (err) { fail(err); }
 }
 
 function onInput(e) {
@@ -645,6 +977,15 @@ function onInput(e) {
   else if (b === 'cn') ui.custom.n = e.target.value;
   else if (b === 'ptext' && ui.pendingText) ui.pendingText.text = e.target.value;
   else if (b === 'search') { ui.search = e.target.value; const list = $('#clist'); if (list) list.innerHTML = complaintListHtml(); }
+  else if (b === 'lsearch') { ui.librarySearch = e.target.value; const keep = e.target.selectionStart; render(); const el = $('#lsearch'); if (el) { el.focus(); el.setSelectionRange(keep, keep); } }
+  else if (b === 'gsearch') {
+    ui.globalSearch = e.target.value;
+    const q = ui.globalSearch.trim().toLowerCase();
+    const comps = q ? pack.complaints.filter((c) => c.label.en.toLowerCase().includes(q) || c.label.ar.includes(q) || c.synonyms.some((s) => s.toLowerCase().includes(q))) : [];
+    const scs = q ? SCORES.filter((s) => s.name.toLowerCase().includes(q) || s.use.toLowerCase().includes(q)) : [];
+    const invs = q ? (pack.investigationCatalog ?? []).filter((x) => x.label.en.toLowerCase().includes(q) || x.label.ar.includes(q)) : [];
+    const box = $('#gresults'); if (box) box.innerHTML = searchResults(comps, scs, invs, store && ui.screen === 'case', q);
+  }
 }
 
 async function onChange(e) {
@@ -666,12 +1007,13 @@ async function onChange(e) {
 }
 
 function onKeydown(e) {
+  if (e.key === 'Escape' && ui.sheet) { ui.sheet = null; render(); return; }
   if (e.key !== 'Enter') return;
   const act = e.target.dataset?.enter;
-  if (act && handlers[act]) { e.preventDefault(); handlers[act](e.target.dataset).catch?.(fail); }
+  if (act && handlers[act]) { e.preventDefault(); Promise.resolve(handlers[act](e.target.dataset, e)).catch(fail); }
 }
 
-// ---------------------------------------------------------------- boot
+// ================================================================ boot
 async function boot() {
   let adapter;
   try {

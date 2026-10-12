@@ -13,19 +13,12 @@ export function reasoningValues(store) {
  * @returns {{ clusters, specialties, mustNotMiss, scores, unsourced, ageNote }}
  * mustNotMiss: [{ id, dx, why, sources[], reasons[] }]  (merged across rules, each diagnosis once)
  */
-export function reason(pack, store) {
-  const values = reasoningValues(store);
-  const age = values['patient.age'];
-  const isChild = typeof age === 'number' && age < 18;
-  const ageUnknown = typeof age !== 'number';
+export function reason(pack, store, values = reasoningValues(store)) {
   const rules = (pack.reasoning?.rules ?? []).filter((r) => evalCondition(r.when, values));
-
   const clusters = [];
   const specialties = [];
   const mnm = new Map();
   const scores = new Map();
-  let ageNote = null;
-
   for (const r of rules) {
     if (r.cluster) clusters.push({ id: r.id, label: r.cluster, sources: r.sources ?? [] });
     for (const s of r.specialties ?? []) if (!specialties.includes(s)) specialties.push(s);
@@ -38,21 +31,11 @@ export function reason(pack, store) {
         mnm.set(d.id, { id: d.id, dx: d.dx, why: d.why, sources: [...d.sources], reasons: [r.id] });
       }
     }
-    for (const sc of r.scores ?? []) {
-      if (sc.adultOnly && (isChild || ageUnknown)) {
-        ageNote = isChild
-          ? 'Some adult-validated scores are hidden because the patient is under 18.'
-          : 'Some adult-validated scores are hidden until age is documented.';
-        continue;
-      }
-      if (!scores.has(sc.name)) scores.set(sc.name, { ...sc });
-    }
+    for (const sc of r.scores ?? []) if (!scores.has(sc.id)) scores.set(sc.id, { id: sc.id, why: sc.why, rule: r.id });
   }
-
-  // Order: clusters (red flags) first is handled by UI; must-not-miss with a source first, then alphabetical by id.
   const mustNotMiss = [...mnm.values()];
   const unsourced = mustNotMiss.filter((d) => d.sources.length === 0).map((d) => d.id);
-  return { clusters, specialties, mustNotMiss, scores: [...scores.values()], unsourced, ageNote };
+  return { clusters, specialties, mustNotMiss, scores: [...scores.values()], unsourced };
 }
 
 /** Plain-text citation list for the sources referenced. */

@@ -47,7 +47,7 @@ def main():
 
         # ---- one question per screen; answer by tapping (no Next button)
         seen = []
-        for _ in range(40):
+        for _ in range(80):
             q = page.query_selector('.q')
             if not q:
                 break
@@ -56,47 +56,48 @@ def main():
                 check(False, f'question repeated: {text}')
                 break
             seen.append(text)
-            n_before = len(page.query_selector_all('.q'))
-            check(n_before == 1, f'exactly one question on screen: {text}') if len(seen) <= 2 else None
-            btn = page.query_selector('.cards [data-act="answer"], .scale [data-act="answer"], .grid2 [data-act="answer"], [data-act="answer-duration"]')
-            first_yes = page.query_selector('[data-act="answer"][data-v="no"]')
-            if first_yes:
-                first_yes.click()
+            if len(seen) <= 2:
+                check(len(page.query_selector_all('.q')) == 1, f'exactly one question on screen: {text}')
+            if page.query_selector('[data-act="answer"][data-v="no"]'):
+                page.click('[data-act="answer"][data-v="no"]')
             elif page.query_selector('[data-act="answer-duration"]'):
                 page.click('[data-act="answer-duration"]')
+            elif page.query_selector('#num-input'):
+                page.fill('#num-input', '5'); page.click('[data-act="answer-num"]')
             else:
-                btn.click()
+                page.click('[data-act="answer"]')
         check(len(seen) >= 8, f'interview asked {len(seen)} distinct questions')
         check('Interview complete' in page.inner_text('main'), 'interview completes')
         check(page.evaluate("window.__UFC.store.getFact('allergy.status')") is not None, 'allergy question answered (safety)')
+        check(page.evaluate("window.__UFC.store.getFact('pmh.hyperlipidaemia')") == 'no', 'score inputs asked in the interview (HEART risk factors)')
 
-        # ---- vitals: BP, HR; derived MAP; then correction
-        page.click('[data-tab="vitals"]')
-        page.fill('#v-sbp', '85'); page.fill('#v-dbp', '50')
-        page.click('[data-act="set-bp"]')
-        page.fill('#v-hr', '88'); page.click('[data-act="set-vital"][data-k="hr"]')
-        page.click('[data-tab="safety"]')
+        # ---- vitals: BP entered once as SBP + DBP, derived values, alert, correction
+        page.click('[data-tab="exam"]')
+        page.click('[data-act="vital"][data-k="bp"]')
+        page.fill('#sv-a', '85'); page.fill('#sv-b', '50'); page.click('[data-act="vital-save"]')
+        page.click('[data-act="vital"][data-k="hr"]'); page.fill('#sv-a', '88'); page.click('[data-act="vital-save"]')
+        check(page.evaluate("[window.__UFC.store.getFact('vitals.sbp'), window.__UFC.store.getFact('vitals.dbp')]") == [85, 50], 'SBP and DBP stored separately')
+        check('Pulse pressure: 35 mmHg' in page.inner_text('main') and 'MAP: 62 mmHg' in page.inner_text('main'), 'MAP and pulse pressure calculated')
+        page.click('[data-tab="now"]')
         check('Hypotension' in page.inner_text('main'), 'hypotension alert shown for 85/50')
-        page.click('[data-tab="vitals"]')
-        page.click('[data-act="correct"][data-key="bp"]')
-        page.fill('input[name="sbp"]', '120'); page.fill('input[name="dbp"]', '80')
-        page.click('[data-modal-act="ok"]')
-        check(page.evaluate("document.querySelector('#modal').textContent.includes('required')"), 'reason is required to correct a measurement')
-        page.fill('input[name="reason"]', 'Cuff error')
-        page.click('[data-modal-act="ok"]')
-        check('120/80' in page.inner_text('main') and 'MAP' in page.inner_text('main'), 'corrected BP and MAP displayed')
-        page.click('[data-tab="safety"]')
+        page.click('[data-tab="exam"]')
+        page.click('[data-act="vital"][data-k="bp"]')
+        page.click('[data-act="vital-mode"][data-m="correct"]')
+        page.fill('#sv-a', '120'); page.fill('#sv-b', '80'); page.click('[data-act="vital-save"]')
+        check(page.evaluate("window.__UFC.store.getFact('vitals.sbp')") == 85, 'reason is required to correct a measurement')
+        page.fill('#sv-r', 'Cuff error'); page.click('[data-act="vital-save"]')
+        check('120/80' in page.inner_text('main') and 'MAP: 93 mmHg' in page.inner_text('main'), 'corrected BP and MAP displayed')
+        page.click('[data-tab="now"]')
         check('Hypotension' not in page.inner_text('main'), 'hypotension alert gone after correction')
 
         # ---- GCS incomplete then complete
-        page.click('[data-tab="vitals"]')
+        page.click('[data-tab="exam"]')
         page.click('[data-act="gcs"][data-k="e"][data-v="4"]')
         check('GCS incomplete — missing verbal response and motor response.' in page.inner_text('main'), 'GCS incomplete message')
         page.click('[data-act="gcs"][data-k="v"][data-v="5"]'); page.click('[data-act="gcs"][data-k="m"][data-v="6"]')
         check('GCS 15/15 (E4 V5 M6)' in page.inner_text('main'), 'GCS total calculated automatically')
 
-        # ---- exam contradiction: cancel, then replace
-        page.click('[data-tab="exam"]')
+        # ---- exam contradiction
         page.click('[data-act="exam"][data-f="exam.resp.normal"]')
         page.click('[data-act="exam"][data-f="exam.resp.wheeze"]')
         check('CONFLICT DETECTED' in page.inner_text('#modal'), 'contradiction detected')
@@ -105,29 +106,57 @@ def main():
         page.click('[data-modal-act="cancel"]')
         check(page.evaluate("window.__UFC.store.getFact('exam.resp.wheeze')") is None, 'cancel leaves previous finding')
 
+        # ---- workup: relevant scores + investigations with WHY
+        page.click('[data-tab="workup"]')
+        wt = page.inner_text('main')
+        check('HEART score' in wt and 'NEWS2' in wt, 'relevant scores listed automatically')
+        check('12-lead ECG' in wt and 'Do now' in wt.replace('DO NOW', 'Do now'), 'investigations grouped by urgency')
+        page.click('[data-act="inv-request"][data-id="ecg"]')
+        check(page.evaluate("window.__UFC.store.getFact('inv.ecg')") == 'requested', 'investigation requested by the clinician')
+        page.click('[data-act="open-score"][data-id="heart"]')
+        page.wait_for_selector('[data-act="score-ask"]')
+        page.click('[data-act="score-ask"]')
+        for _ in range(6):
+            if not page.query_selector('#sheet .q'):
+                break
+            page.click('#sheet [data-act="answer"][data-i="0"]')
+        sheet = page.inner_text('#sheet')
+        check('low risk' in sheet, 'HEART completes by asking only the missing inputs')
+        page.click('[data-act="copy-score"]'); page.wait_for_selector('.toast')
+        clip = page.evaluate("navigator.clipboard.readText()")
+        check(clip.startswith('HEART score') and 'undefined' not in clip, 'COPY SCORE gives plain text')
+        page.click('[data-act="close-sheet"]')
+
         # ---- note + copy
         page.click('[data-tab="note"]')
         page.fill('#dx', 'Acute chest pain, ACS not excluded'); page.dispatch_event('#dx', 'change')
         page.click('[data-act="dispo"][data-v="Admit to ward"]')
-        page.click('[data-act="copy"][data-target="complete"]')
+        page.click('.fab [data-act="copy"][data-target="complete"]')
         page.wait_for_selector('.toast')
         clip = page.evaluate("navigator.clipboard.readText()")
         check(clip.startswith('CLINICAL NOTE') and 'BP 120/80 mmHg (MAP 93 mmHg)' in clip, 'COPY COMPLETE CASE puts the note on the clipboard')
         check(not any(x in clip for x in ('{', 'undefined', 'NaN', '[object')), 'copied text is plain (no JSON / undefined / NaN)')
         check('DR. AHMED' not in clip, 'watermark not copied')
         check('Systolic BP 85 recorded earlier was corrected' in clip, 'correction documented in the copied note')
-        check('denies' in clip or 'Patient reports' in clip, 'HPI present in copied note')
+        check('Requested: 12-lead ECG' in clip, 'requested investigation documented')
+        check('HEART score' in clip and 'CLINICAL SCORES' in clip, 'calculated score documented')
         page.click('[data-act="copy"][data-target="vitals"]')
         page.wait_for_selector('.toast')
         check(page.evaluate("navigator.clipboard.readText()").startswith('VITAL SIGNS'), 'per-section copy works')
 
+        # ---- treat: reassessment documented exactly as selected
+        page.click('[data-tab="treat"]')
+        page.fill('#txtext', 'Aspirin given'); page.click('[data-act="add-treatment"]')
+        page.click('[data-act="reassess"][data-v="partial"]')
+        check('partial symptomatic improvement' in page.inner_text('main'), 'reassessment documented')
+
         # ---- timeline
-        page.click('[data-tab="timeline"]')
-        page.fill('#evtext', 'Aspirin given'); page.click('[data-act="add-event"]')
-        check('Aspirin given' in page.inner_text('main'), 'timeline event added with automatic time')
+        page.click('[data-tab="note"]'); page.click('[data-act="note-mode"][data-m="timeline"]')
+        page.fill('#evtext', 'Cardiology contacted'); page.click('[data-act="add-event"]')
+        check('Cardiology contacted' in page.inner_text('main') and 'Aspirin given' in page.inner_text('main'), 'timeline event added with automatic time')
 
         # ---- finalize
-        page.click('[data-tab="note"]')
+        page.click('[data-act="note-mode"][data-m="note"]')
         page.click('[data-act="finalize"]'); page.click('[data-modal-act="ok"]')
         check('CASE COMPLETE' in page.inner_text('main'), 'case finalized')
         check(page.evaluate("window.__UFC.store.state.versions.some(v=>v.kind==='final')"), 'final version stored')
@@ -140,7 +169,7 @@ def main():
         check(page.evaluate("window.__UFC.store.getFact('vitals.sbp')") == 120, 'reload restores the last case from local storage')
         check(page.evaluate("window.__UFC.store.state.status") == 'final', 'finalized status restored')
 
-        # ---- Phase 2: multiple complaints in ONE case, Think tab
+        # ---- multiple complaints in ONE case, Think tab
         page.goto(BASE); page.wait_for_selector('[data-act="new-case"]')
         page.click('[data-act="new-case"]')
         page.fill('#age', '55')
@@ -162,6 +191,12 @@ def main():
         note = page.inner_text('main')
         check('clinician-confirmed' in note and 'Pulmonary embolism' in note, 'accepted consideration appears in the note')
         check('Acute coronary syndrome' not in note, 'unaccepted suggestions do not appear in the note')
+
+        # ---- score library (calculator mode, nothing saved)
+        page.click('[data-act="home"]'); page.click('[data-act="library"]')
+        page.click('[data-act="open-score"][data-id="qsofa"]')
+        check('not saved' in page.inner_text('#sheet'), 'calculator mode is labelled as not saved')
+        page.click('[data-act="close-sheet"]')
 
         # ---- Arabic / RTL
         page.click('[data-act="lang"]')

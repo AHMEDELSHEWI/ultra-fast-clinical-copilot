@@ -7,10 +7,14 @@ export function evalCondition(cond, values) {
   if (cond.all) return cond.all.every((c) => evalCondition(c, values));
   if (cond.any) return cond.any.some((c) => evalCondition(c, values));
   const v = values[cond.fact];
+  if ('exists' in cond) return (v !== undefined) === cond.exists;
+  if ('in' in cond) return cond.in.includes(v);
   if ('eq' in cond) return v === cond.eq;
   if ('neq' in cond) return v !== cond.neq;
   if ('gte' in cond) return typeof v === 'number' && v >= cond.gte;
   if ('lte' in cond) return typeof v === 'number' && v <= cond.lte;
+  if ('lt' in cond) return typeof v === 'number' && v < cond.lt;
+  if ('gt' in cond) return typeof v === 'number' && v > cond.gt;
   return false;
 }
 

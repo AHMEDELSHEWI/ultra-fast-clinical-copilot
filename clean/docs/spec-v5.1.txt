@@ -1,0 +1,1512 @@
+MASTER BUILD PROMPT V5.1
+ULTRA-FAST INTELLIGENT CLINICAL AI COPILOT
+GLOBAL MULTI-SPECIALTY CLINICAL AI, DECISION SUPPORT, DOCUMENTATION & MEDICAL INFORMATION PLATFORM
+Web + PWA + Android + iOS + Tablet + Desktop Ready
+ULTRA-FAST • INTELLIGENT • CLINICAL • DOCUMENTATION-FIRST • MULTI-SPECIALTY • OFFLINE-FIRST • GLOBAL • PROFESSIONAL
+
+───
+
+1. MAIN GOAL
+Build a professional global medical platform called:
+ULTRA-FAST INTELLIGENT CLINICAL AI COPILOT
+The platform must help doctors assess patients, reason clinically, calculate medical scores, check treatment safety, document the encounter automatically, and copy the final clinical documentation with one tap.
+This is NOT:
+• a simple chatbot
+• a simple symptom checker
+• a textbook
+• a collection of unrelated medical pages
+• a simple calculator application
+• a basic EMR clone
+Build:
+ONE UNIVERSAL CLINICAL BRAIN
+with:
+SPECIALTY-SPECIFIC CLINICAL ENGINES
+and:
+DOCUMENTATION-FIRST DESIGN
+
+───
+
+2. MOST IMPORTANT PRINCIPLE
+ENTER ONCE → USE EVERYWHERE
+If the doctor enters information once, the doctor must never have to type the same information again.
+Information should automatically be reused where appropriate in:
+• History
+• Examination
+• Vital signs
+• Investigations
+• Assessment
+• Differential diagnosis
+• Diagnosis
+• Treatment
+• Medications
+• Procedures
+• Reassessment
+• Consultation
+• Referral
+• Disposition
+• Follow-up
+• Safety-netting
+• ICD-10
+• MCCHIS
+• Consultant summary
+• Final clinical note
+
+───
+
+3. ONE CONNECTED PATIENT CASE
+One patient must have:
+ONE ENCOUNTER
+The encounter can contain:
+• one complaint
+• several complaints
+• several clinical problems
+• several diagnoses
+• several treatments
+• several consultations
+Example:
+A patient presents with:
+• chest pain
+• shortness of breath
+• vomiting
+• dizziness
+These must NOT become four unrelated cases.
+They must remain:
+ONE CONNECTED CLINICAL CASE
+The system must determine whether:
+• the symptoms are related
+• one diagnosis explains several symptoms
+• there are several simultaneous diagnoses
+• there is a dangerous alternative diagnosis
+
+───
+
+4. THOUSANDS OF CLINICAL PRESENTATIONS
+The system must support thousands of clinical presentations across all medical specialties.
+Do NOT create thousands of manually coded pages.
+Create a flexible system where presentations are built from reusable clinical components.
+Each presentation can contain:
+• Relevant questions
+• Red flags
+• Relevant history
+• Relevant examination
+• Relevant investigations
+• Relevant scores
+• Differential diagnoses
+• Treatment options
+• Reassessment
+• Documentation
+• Referral
+• Disposition
+• Follow-up
+The system must be expandable without rebuilding the entire application.
+
+───
+
+5. ALL MEDICAL SPECIALTIES
+Support at least:
+• Emergency Medicine
+• Critical Care
+• Internal Medicine
+• Family Medicine
+• Cardiology
+• Neurology
+• Neurosurgery
+• Pulmonology
+• Gastroenterology
+• Hepatology
+• Nephrology
+• Endocrinology
+• Rheumatology
+• Hematology
+• Oncology
+• Infectious Diseases
+• Dermatology
+• Psychiatry
+• Pediatrics
+• Neonatology
+• Obstetrics
+• Gynecology
+• General Surgery
+• Trauma Surgery
+• Orthopedics
+• Urology
+• Ophthalmology
+• ENT
+• Anesthesiology
+• Pain Medicine
+• Geriatrics
+• Palliative Medicine
+• Allergy and Immunology
+• Clinical Genetics
+• Radiology
+• Pathology
+• Nuclear Medicine
+• Sports Medicine
+• Rehabilitation
+• Clinical Pharmacology
+• Toxicology
+• Emergency Ultrasound / POCUS
+The architecture must allow additional specialties to be added later.
+
+───
+
+6. AUTOMATIC SPECIALTY SELECTION
+The doctor should not need to manually choose a specialty for every case.
+The system should recognize which specialties are relevant.
+Examples:
+Chest pain:
+Emergency Medicine + Cardiology
+Unstable chest pain:
+Emergency Medicine + Cardiology + Critical Care
+Pregnant patient with chest pain:
+Emergency Medicine + Cardiology + Obstetrics
+Child with seizure:
+Pediatrics + Neurology + Emergency Medicine + Critical Care if unstable
+The system may activate several specialty engines at the same time.
+
+───
+
+7. ONE QUESTION AT A TIME
+The clinical workflow must be simple.
+Show:
+ONE IMPORTANT QUESTION AT A TIME
+Do not show a giant questionnaire.
+Each screen should contain:
+• One clinical question
+• Large answer buttons
+• Relevant medical icon
+• Optional free-text input
+• Clear visual feedback
+• Automatic transition when appropriate
+Do not use unnecessary dropdown menus.
+Prefer:
+• Large buttons
+• Cards
+• Segmented choices
+• Numeric keypad
+• Visual scales
+• Icons
+• Body diagrams
+• Search
+• Favorites
+• Recent selections
+
+───
+
+8. INTELLIGENT QUESTIONS
+Do not ask every possible question.
+The system should choose the next question based on:
+• Patient age
+• Sex
+• Pregnancy
+• Chief complaint
+• Other complaints
+• Severity
+• Vital signs
+• Red flags
+• Previous answers
+• Comorbidities
+• Medications
+• Allergies
+• Clinical probability
+• Time sensitivity
+• Potential effect on management
+Ask the question that is most useful at that moment.
+
+───
+
+9. NATURAL LANGUAGE INPUT
+The doctor can type or dictate:
+"55-year-old male diabetic and hypertensive with crushing central chest pain for 30 minutes, sweating and nausea."
+The system should recognize:
+Age Sex Diabetes Hypertension Chest pain Onset Character Duration Associated symptoms
+Then ask only important missing information.
+
+───
+
+10. VOICE INPUT
+Support speech-to-text where the device allows it.
+The doctor can speak normally.
+The system should:
+1. Convert speech to text
+2. Recognize clinical information
+3. Put information into the correct fields
+4. Build documentation
+5. Ask for clarification when needed
+The doctor can correct any information.
+The doctor's correction becomes the final accepted information.
+
+───
+
+11. VITAL SIGNS
+All vital signs must be structured data.
+Blood pressure MUST have two separate values:
+SBP
+and
+DBP
+Example:
+SBP = 90
+DBP = 60
+Display:
+90/60 mmHg
+Also calculate when appropriate:
+• MAP
+• Pulse pressure
+• Shock Index
+• Other relevant calculations
+Other vital signs may include:
+• HR
+• RR
+• SpO₂
+• Temperature
+• GCS
+• Pain score
+• Weight
+• Height
+• Blood glucose
+• EtCO₂
+• FiO₂
+• Oxygen device
+• Oxygen flow
+• Other clinically relevant measurements
+
+───
+
+12. CORRECTING A WRONG MEASUREMENT
+Keep this process very simple.
+Example:
+First measurement:
+BP 90/60
+Later the doctor checks the machine and realizes there was a problem.
+The doctor changes the current BP to:
+120/80
+The system must then:
+1. Use 120/80 as the current BP
+2. Stop using 90/60 in current calculations
+3. Recalculate relevant scores
+4. Recalculate relevant warnings
+5. Update the clinical reasoning
+6. Update the documentation
+7. Keep a simple record that the earlier measurement was corrected
+The doctor should not need to understand technical database terminology.
+Use simple wording such as:
+CORRECT MEASUREMENT
+or:
+REMOVE FROM CURRENT CALCULATIONS
+Do NOT use the word:
+"Invalidate"
+anywhere in the user interface.
+
+───
+
+13. VITAL SIGN HISTORY
+Do not silently overwrite previous measurements.
+Example:
+14:02 BP 90/60
+14:07 BP 120/80
+14:20 BP 110/70
+The system should show the trend.
+If the doctor corrects a previous measurement, keep the correction history for safety and audit purposes.
+
+───
+
+14. GCS
+GCS must be entered as:
+• Eye
+• Verbal
+• Motor
+The system automatically calculates:
+GCS = Eye + Verbal + Motor
+Example:
+E4 + V5 + M6 = 15/15
+The doctor should never have to manually calculate GCS.
+The system must prevent impossible combinations.
+
+───
+
+15. MEDICAL SCORE ENGINE
+Create a large medical score library.
+Include relevant validated scores such as:
+• GCS
+• NEWS2
+• CURB-65
+• HEART
+• EDACS
+• TIMI
+• GRACE
+• Wells
+• PERC
+• PESI
+• SOFA
+• qSOFA where appropriate
+• CHA₂DS₂-VASc
+• HAS-BLED
+• NIHSS
+• Shock Index
+• Canadian C-Spine
+• NEXUS
+• PECARN
+• Ottawa rules
+• and many other validated medical scores
+The goal is NOT to show every score all the time.
+The system must automatically decide which scores are relevant to the current case.
+
+───
+
+16. AUTOMATIC SCORE CALCULATION
+If enough information is available:
+CALCULATE AUTOMATICALLY
+Example:
+Patient with suspected pneumonia.
+The system has:
+Age Confusion status RR BP BUN
+Automatically calculate:
+CURB-65
+The doctor should not need to open a calculator.
+
+───
+
+17. MISSING SCORE INFORMATION
+If a useful score needs one missing piece of information:
+Ask only for that information.
+Example:
+CURB-65 is appropriate.
+BUN is missing.
+Ask:
+BUN?
+Do not ask unrelated questions.
+
+───
+
+18. SCORE RESULTS
+Every score should show:
+• Score name
+• Result
+• Components
+• Interpretation
+• Clinical meaning
+• Limitations
+• Source
+• Version/date
+Allow:
+COPY SCORE
+
+───
+
+19. INVESTIGATION ENGINE
+The system should suggest appropriate investigations according to the case.
+Group recommendations into:
+DO NOW
+DO SOON
+CONSIDER
+NOT ROUTINELY INDICATED
+For important suggested investigations, explain briefly:
+WHY?
+Example:
+ECG
+Reason:
+"Acute chest pain with diaphoresis may represent acute coronary syndrome."
+The system should not simply order tests automatically.
+The doctor remains in control.
+
+───
+
+20. CLINICAL REASONING ENGINE
+The system analyzes:
+• History
+• Examination
+• Vital signs
+• Laboratory results
+• ECG
+• Imaging
+• Medications
+• Comorbidities
+• Risk factors
+• Multiple active complaints
+Then provides:
+• Clinical summary
+• Important findings
+• Differential diagnosis
+• Red flags
+• Next best question
+• Next useful investigation
+• Next clinical action
+
+───
+
+21. DIFFERENTIAL DIAGNOSIS
+For every significant clinical problem consider:
+MUST NOT MISS
+MOST LIKELY
+IMPORTANT ALTERNATIVES
+TIME-SENSITIVE DIAGNOSES
+Consider:
+• Severity
+• Probability
+• Time sensitivity
+• Harm if missed
+• Reversibility
+
+───
+
+22. MULTIPLE PROBLEMS
+For multiple complaints, the system should ask:
+Could these symptoms have one common cause?
+But do NOT force one diagnosis.
+Allow:
+• One diagnosis
+• Several diagnoses
+• Primary diagnosis + secondary diagnosis
+• Separate problem-based diagnoses
+
+───
+
+23. WHAT COULD I BE MISSING?
+Before final diagnosis or discharge:
+Show:
+WHAT COULD I BE MISSING?
+Focus on dangerous diagnoses that could reasonably be missed.
+Do not generate a huge irrelevant list.
+Prioritize:
+• Danger
+• Probability
+• Time sensitivity
+• Consequence of delay
+
+───
+
+24. MEDICATION ENGINE
+Create a comprehensive medication system.
+When clinically relevant, provide:
+• Drug
+• Indication
+• Dose
+• Route
+• Frequency
+• Maximum dose
+• Pediatric dose
+• Weight-based dose
+• Renal adjustment
+• Hepatic adjustment
+• Pregnancy considerations
+• Elderly considerations
+• Contraindications
+• Important interactions
+• Important adverse effects
+• Monitoring
+• Titration where relevant
+Detailed information should remain hidden unless needed.
+Use:
+MEDICATION DETAILS
+to expand it.
+Do not overwhelm the doctor.
+
+───
+
+25. MEDICATION SAFETY
+Before treatment, check when relevant:
+• Allergy
+• Drug interactions
+• Drug-disease interactions
+• Age
+• Weight
+• Renal function
+• Hepatic function
+• Pregnancy
+• Maximum dose
+• Duplicate therapy
+• Contraindications
+Never invent a dose.
+If information required for safe dosing is missing:
+ASK FOR IT
+
+───
+
+26. PEDIATRIC SAFETY
+When the patient is a child:
+Automatically activate Pediatric Safety Mode.
+Require:
+AGE
+WEIGHT
+Calculate when appropriate:
+• Medication dose
+• Maximum dose
+• Fluid dose
+• Resuscitation dose
+• Defibrillation energy
+• Cardioversion energy
+• ETT size
+• ETT depth
+• Ventilation parameters
+• Other pediatric calculations
+Never accidentally use adult dosing.
+
+───
+
+27. PREGNANCY SAFETY
+When pregnancy is relevant, consider:
+• Pregnancy status
+• Gestational age
+• Maternal safety
+• Fetal considerations
+• Medication safety
+• Imaging safety
+• Thromboembolism
+• Obstetric emergencies
+Ask for missing pregnancy information when it can change management.
+
+───
+
+28. DRUG INTERACTION ENGINE
+Check important:
+• Drug-drug interactions
+• Drug-disease interactions
+• Drug-age concerns
+• Drug-pregnancy concerns
+• Drug-renal concerns
+• Drug-hepatic concerns
+• Drug-allergy concerns
+Do not overwhelm the doctor with low-value alerts.
+Prioritize clinically important interactions.
+
+───
+
+29. READY CLINICAL TEMPLATES
+Provide ready-to-use professional templates for common conditions.
+Examples:
+• Gastroenteritis
+• Common cold
+• Sepsis
+• STEMI
+• Cardiogenic shock
+• Asthma
+• COPD exacerbation
+• Pneumonia
+• Stroke
+• Seizure
+• DKA
+• AKI
+• GI bleeding
+• Anaphylaxis
+• Trauma
+• Chest pain
+• Abdominal pain
+• Headache
+• Fever
+• Vomiting
+• Diarrhea
+• Syncope
+• Palpitations
+• Dyspnea
+• Back pain
+• Limb pain
+• Rash
+• Altered mental status
+• and thousands of additional presentations
+Templates must adapt to:
+• Age
+• Sex
+• Weight
+• Pregnancy
+• Severity
+• Comorbidities
+• Renal function
+• Hepatic function
+• Allergies
+• Vital signs
+• Investigations
+• Clinical findings
+Never blindly apply a fixed treatment.
+
+───
+
+30. EVIDENCE ENGINE
+Use current, verified medical evidence.
+Priority:
+1. Official professional societies
+2. Major peer-reviewed literature
+3. High-quality systematic reviews
+4. Major clinical references
+5. High-quality educational resources
+Potential sources include:
+ACEP RCEM AHA ERC ILCOR ESC ACC SCCM ESICM ACS EAST WTA ASA ESO AAN Surviving Sepsis Campaign IDSA AACT EXTRIP AAP WINFOCUS and relevant specialty organizations.
+Only use real sources.
+
+───
+
+31. EVIDENCE DATE SAFETY
+Never invent:
+• Guideline year
+• Guideline edition
+• Recommendation
+• Medication dose
+• DOI
+• URL
+• Evidence level
+If the latest official guideline is from 2025:
+Say:
+"Latest official available version: 2025."
+Never invent a 2026 guideline.
+
+───
+
+32. DOCUMENTATION ENGINE
+The system continuously creates the clinical note.
+It should automatically build:
+• Patient information
+• Chief complaint
+• History of presenting illness
+• Relevant history
+• Review of systems
+• Vital signs
+• Examination
+• Investigations
+• Results
+• Clinical assessment
+• Differential diagnosis
+• Working/confirmed diagnosis
+• Treatment
+• Medications
+• Procedures
+• Reassessment
+• Consultation
+• Disposition
+• Follow-up
+• Safety-netting
+• ICD-10
+• MCCHIS
+• Consultant summary
+
+───
+
+33. DOCUMENTATION LANGUAGE
+Convert structured information into professional medical language.
+Example:
+Input:
+Pain 7/10 Central Crushing Radiates to left arm Sweating
+Output:
+"Patient reports severe central crushing chest pain, rated 7/10, radiating to the left arm and associated with diaphoresis."
+Do not simply dump raw fields into the note.
+Never invent information.
+
+───
+
+34. NEGATIVE FINDINGS
+If the doctor specifically documents:
+"No dyspnea"
+write:
+"Patient denies dyspnea."
+If the doctor specifically documents:
+"No focal neurological deficit"
+write:
+"No focal neurological deficit identified."
+If it was not assessed:
+Write:
+MISSING: Dyspnea not assessed.
+Never assume that absence of documentation means a negative finding.
+
+───
+
+35. MISSING INFORMATION
+If important information has not been assessed:
+Ask for it.
+Never fabricate.
+Examples:
+Allergy status missing → Ask allergy status
+Weight missing when weight-based dosing is needed → Ask weight
+Pregnancy status missing → Ask pregnancy status
+Renal function missing when dosing depends on it → Ask renal information
+
+───
+
+36. LIVE NOTE
+Provide:
+LIVE NOTE
+The doctor can see the note being created in real time.
+The doctor should not need to wait until the end.
+Every new answer can automatically update the relevant section.
+
+───
+
+37. DOCUMENTATION TYPES
+Support:
+• ED Note
+• Consultant Note
+• Admission Note
+• Progress Note
+• ICU Note
+• Referral Note
+• Discharge Note
+• Procedure Note
+• Specialty Consult Note
+• MCCHIS Note
+• Surgical/Operative Summary where appropriate
+The system should suggest the most suitable documentation format.
+
+───
+
+38. REASSESSMENT
+After an important treatment or intervention, the system may ask:
+IMPROVED?
+Options:
+• Yes
+• No
+• Partial
+• Worse
+• New problem
+If the doctor selects:
+Partial
+automatically document:
+"Patient reassessed following treatment with partial symptomatic improvement."
+Only document what the doctor confirms.
+
+───
+
+39. PROCEDURE DOCUMENTATION
+For procedures support:
+• Indication
+• Consent if documented
+• Preparation
+• Procedure
+• Technique
+• Medication
+• Dose
+• Equipment
+• Findings
+• Complications
+• Outcome
+• Post-procedure plan
+Provide:
+COPY PROCEDURE NOTE
+
+───
+
+40. REFERRAL ENGINE
+Automatically create:
+COPY REFERRAL
+Include:
+• Reason for referral
+• Clinical summary
+• Important findings
+• Vital signs
+• Investigations
+• Treatment
+• Response
+• Specific question to consultant
+The doctor should not rewrite the case.
+
+───
+
+41. DISCHARGE ENGINE
+Automatically create:
+• Diagnosis
+• Treatment
+• Medication
+• Follow-up
+• Return precautions
+• Safety-netting
+• Patient instructions
+Buttons:
+COPY DISCHARGE
+COPY PATIENT INSTRUCTIONS
+COPY FOLLOW-UP
+
+───
+
+42. ICD-10 ENGINE
+Suggest:
+• Diagnosis
+• ICD-10 code
+• Specificity
+• Confidence
+• Reason
+Require doctor confirmation when appropriate.
+Never present an AI suggestion as a confirmed diagnosis unless the doctor confirms it.
+Provide:
+COPY ICD-10
+
+───
+
+43. MCCHIS ENGINE
+Provide:
+MCCHIS COPY
+Generate concise professional structured documentation using only documented information.
+Never invent:
+• Patient information
+• Clinical findings
+• Diagnoses
+• Treatments
+
+───
+
+44. UNIVERSAL COPY SYSTEM
+Everything useful should be copyable.
+Provide:
+• COPY ANSWER
+• COPY FINDING
+• COPY SECTION
+• COPY HISTORY
+• COPY EXAM
+• COPY VITALS
+• COPY INVESTIGATIONS
+• COPY ASSESSMENT
+• COPY DIFFERENTIAL
+• COPY DIAGNOSIS
+• COPY TREATMENT
+• COPY MEDICATION
+• COPY PROCEDURE
+• COPY REASSESSMENT
+• COPY REFERRAL
+• COPY DISPOSITION
+• COPY DISCHARGE
+• COPY FOLLOW-UP
+• COPY SAFETY NETTING
+• COPY SCORE
+• COPY ICD-10
+• COPY MCCHIS
+• COPY CONSULTANT SUMMARY
+• COPY TIMELINE
+• COPY COMPLETE CASE
+
+───
+
+45. COPY FORMAT
+Copied text must be:
+• Professional
+• Human readable
+• Clean
+• Plain text
+• Easy to paste into an EMR
+• Easy to paste into messaging
+• Suitable for MCCHIS
+Never copy:
+• JSON
+• HTML
+• Database syntax
+• Internal technical IDs
+• Developer information
+
+───
+
+46. COPY COMPLETE CASE
+At the end:
+COPY COMPLETE CASE
+One tap must copy the complete current clinical documentation.
+The system must automatically assemble:
+• Patient information
+• Chief complaint
+• History
+• Examination
+• Vitals
+• Investigations
+• Results
+• Assessment
+• Differential
+• Diagnosis
+• Treatment
+• Medications
+• Procedures
+• Reassessment
+• Consultation
+• Disposition
+• Follow-up
+• Safety-netting
+• ICD-10
+• MCCHIS
+The doctor must NOT manually assemble the note.
+
+───
+
+47. CONSULTANT SUMMARY
+Automatically create:
+CONSULTANT SUMMARY
+Include:
+• Patient snapshot
+• Clinical problems
+• Important findings
+• Important vital signs
+• Investigations
+• Most likely diagnosis
+• Must-not-miss diagnoses
+• Treatment
+• Response
+• Consultation
+• Plan
+• Disposition
+• Outstanding issues
+
+───
+
+48. CLINICAL TIMELINE
+Automatically record important events.
+Example:
+14:02 Arrival 14:04 Initial assessment 14:05 ECG 14:07 Aspirin administered 14:09 Cardiology contacted 14:14 Repeat ECG 14:20 Transfer
+Provide:
+COPY TIMELINE
+Allow correction of times when necessary.
+
+───
+
+49. FINAL SAFETY CHECK
+Before:
+FINALIZE CASE
+check:
+• Missing critical information
+• Contradictory information
+• Impossible values
+• Abnormal unresolved vital signs
+• Allergies
+• Important interactions
+• Incorrect dosing
+• Missing reassessment
+• Red flags
+• Unsupported diagnosis
+• Important pending investigations
+• Disposition concerns
+Use:
+INFO CAUTION IMPORTANT CRITICAL
+Do not create unnecessary alerts.
+The doctor remains in control.
+
+───
+
+50. FINALIZE CASE
+When the doctor presses:
+FINALIZE CASE
+automatically create:
+• Final clinical note
+• MCCHIS
+• ICD-10 suggestions
+• Consultant summary
+• Timeline
+• Copy options
+• Save case
+• Backup option
+Do not require another AI request.
+
+───
+
+51. RESUSCITATION MODE
+Create a dedicated:
+RESUSCITATION MODE
+It must be extremely fast.
+Include:
+• CPR timer
+• Drug calculator
+• Defibrillation
+• Cardioversion
+• Pacing
+• Airway
+• Vascular access
+• Reversible causes
+• Post-ROSC
+• Important timers
+• Large touch buttons
+Use verified current recommendations.
+Never invent guidelines.
+
+───
+
+52. ICU MODE
+Include:
+• Shock
+• Sepsis
+• Mechanical ventilation
+• ARDS
+• Sedation
+• Analgesia
+• Delirium
+• AKI
+• Electrolytes
+• Acid-base
+• Post-cardiac arrest
+• Neurocritical care
+• Toxicology
+
+───
+
+53. OFFLINE-FIRST
+The core application must continue working without internet.
+Offline functionality must include:
+• Clinical workflow
+• History
+• Examination
+• Vital signs
+• Documentation
+• Copy
+• Scores
+• Calculators
+• Core algorithms
+• Templates
+• Medication calculations
+• Saved cases
+• Search
+• Backup
+• Restore
+Internet may be used for optional:
+• Cloud AI
+• Evidence updates
+• Synchronization
+• Payment
+• Optional analytics
+The application must NOT become useless when the internet disappears.
+
+───
+
+54. AI + LOCAL LOGIC
+Use local deterministic logic for:
+• Calculations
+• Scores
+• Dose arithmetic
+• Unit conversion
+• Validation
+• Contradiction checking
+• Data correction
+• Documentation assembly
+• Timeline
+• Backup
+• Navigation
+• Core safety checks
+Use AI for:
+• Natural language understanding
+• Clinical synthesis
+• Question selection
+• Differential diagnosis
+• Cross-specialty reasoning
+• Documentation refinement
+• Summarization
+• Missed-diagnosis suggestions
+Do not use cloud AI for tasks that can safely and reliably run locally.
+
+───
+
+55. CASE MEMORY
+Saved cases should include:
+• Case ID
+• Date
+• Time
+• Age
+• Sex
+• Presentations
+• Diagnoses
+• Disposition
+• Last update
+Cases are stored locally by default.
+
+───
+
+56. PRIVACY
+Patient data remains local by default.
+Never send patient data to the cloud automatically.
+Cloud AI must require appropriate configuration.
+Do not use patient information for analytics by default.
+
+───
+
+57. SECURITY
+Use:
+• Encryption
+• Secure local storage
+• Session timeout
+• Biometric/PIN protection where supported
+• Audit trail
+• Secure synchronization
+• Proper access control
+Never put:
+• API keys
+• Passwords
+• Payment secrets
+• Private tokens
+inside HTML or JavaScript.
+
+───
+
+58. BACKUP
+Provide:
+BACKUP NOW
+AUTO BACKUP
+EXPORT
+IMPORT
+RESTORE
+DELETE BACKUP
+Never silently overwrite historical backups.
+
+───
+
+59. VERSION CONTROL
+Clinical content must be versioned.
+Record:
+• Version
+• Date
+• Source
+• Change
+• Author/system
+• Previous version
+Allow rollback when appropriate.
+
+───
+
+60. CLINICAL CONTENT SHOULD BE SEPARATE FROM CODE
+Keep clinical content separate from application code where practical.
+Examples:
+• Presentations
+• Questions
+• Scores
+• Drugs
+• Treatments
+• Templates
+• Guidelines
+• ICD-10 mappings
+• Documentation rules
+This makes it possible to update medical content without rebuilding the entire application.
+
+───
+
+61. SEARCH
+Create fast global search for:
+• Symptoms
+• Presentations
+• Diseases
+• Drugs
+• Procedures
+• Scores
+• Guidelines
+• ICD-10
+• Algorithms
+• Specialties
+• Templates
+Search must be fast and easy.
+Use:
+• Search
+• Filters
+• Favorites
+• Recent items
+Avoid unnecessary dropdowns.
+
+───
+
+62. USER INTERFACE
+The application must look like a premium professional medical system.
+Main workspace:
+WHITE
+Use beautiful professional medical icons.
+Icons must have clear meaning.
+Do NOT use decorative icons just for decoration.
+Icons should help the doctor understand:
+• Danger
+• Urgency
+• Specialty
+• Investigation
+• Medication
+• Procedure
+• Documentation
+• Diagnosis
+• Reassessment
+• Referral
+• Disposition
+Use a comfortable professional color system:
+RED = immediate danger
+ORANGE = urgent
+YELLOW = caution
+GREEN = reassuring
+BLUE = information
+PURPLE = specialty
+WHITE = main workspace
+Never depend on color alone.
+Use icons, text, labels, and shapes together.
+
+───
+
+63. UX FOR LARGE AMOUNTS OF DATA
+The application will contain thousands of medical topics.
+Therefore:
+• Keep screens clean
+• Use progressive disclosure
+• Show only relevant information
+• Use search
+• Use smart filtering
+• Use categories
+• Use favorites
+• Use recent items
+• Keep important actions visible
+• Avoid unnecessary scrolling
+• Avoid giant tables on mobile
+• Use cards where appropriate
+The interface should feel simple even though the underlying medical knowledge is extremely large.
+
+───
+
+64. PERFORMANCE
+The product must feel:
+ULTRA-FAST
+Local calculations should feel immediate.
+Use appropriate technologies such as:
+• IndexedDB
+• Service Worker
+• Local caching
+• Lazy loading
+• Efficient state management
+• Web Workers where useful
+Do not wait for cloud AI when local logic can answer immediately.
+
+───
+
+65. RESPONSIVE DESIGN
+Optimize for:
+• iPhone
+• Android
+• iPad
+• Android tablets
+• Desktop
+• PWA
+No horizontal scrolling.
+Large touch targets.
+Minimal unnecessary scrolling.
+Fast navigation.
+
+───
+
+66. EDUCATION MODE
+Create a separate:
+EDUCATION / REFERENCE MODE
+For:
+• Medical students
+• Residents
+• Emergency physicians
+• ICU physicians
+• Specialty trainees
+Include:
+• Clinical cases
+• OSCE
+• ECG
+• ABG
+• Clinical reasoning
+• Calculators
+• Algorithms
+• Medical references
+Education mode must remain clearly separate from real patient workflow.
+
+───
+
+67. COMMERCIAL MODEL
+This is a professional paid product.
+Possible plans:
+PROFESSIONAL
+CONSULTANT
+ENTERPRISE
+Support:
+• Individual subscriptions
+• Professional subscriptions
+• Institutional licenses
+• Enterprise deployment
+Never claim successful payment unless confirmed by the payment provider.
+Never store raw card information.
+Use secure PCI-compliant payment providers.
+
+───
+
+68. GLOBAL PRODUCT
+The product must be designed globally from day one.
+Support:
+• English
+• Arabic
+• RTL
+• LTR
+• Internationalization
+• Localization
+• Multiple healthcare systems
+• Configurable documentation formats
+• Configurable institutional workflows
+Do not build the architecture around one country only.
+
+───
+
+69. LEGAL / CLINICAL POSITIONING
+Position the platform as:
+PROFESSIONAL CLINICAL AI COPILOT
+CLINICAL DECISION SUPPORT
+MEDICAL INFORMATION / EDUCATION PLATFORM
+DOCUMENTATION ASSISTANT
+The platform assists the physician.
+It must not claim to replace the physician.
+The physician remains responsible for clinical decisions.
+
+───
+
+70. TESTING
+Before production, extensively test:
+• Documentation
+• Copy
+• Copy All
+• MCCHIS
+• ICD-10
+• GCS
+• Medical scores
+• Medication calculations
+• Pediatric calculations
+• Renal dosing
+• Maximum doses
+• Drug interactions
+• Contradictions
+• Missing information
+• Corrected measurements
+• Multiple complaints
+• Multiple diagnoses
+• Unifying diagnoses
+• Offline mode
+• Backup
+• Restore
+• Voice input
+• Mobile screens
+• Tablet screens
+• Desktop
+• Accessibility
+Critical clinical tests must pass before release.
+
+───
+
+71. CLINICAL VALIDATION
+Every:
+• Score
+• Calculator
+• Clinical algorithm
+• Medication calculation
+• Documentation transformation
+must be independently testable.
+Every generated clinical statement must be traceable to its source information.
+
+───
+
+72. NO FAKE INFORMATION
+Never create fake:
+• Guidelines
+• Doses
+• Clinical recommendations
+• Citations
+• Validation
+• Payment confirmation
+• Clinical evidence
+Demo information must clearly say:
+DEMO
+
+───
+
+73. ORIGINAL PRODUCT
+Create original:
+• UI
+• UX
+• Architecture
+• Workflow
+• Clinical data structure
+• Documentation structure
+• Icons
+• Visual design
+• Software implementation
+Do not copy proprietary interfaces or protected text.
+
+───
+
+74. ERROR HANDLING
+Never show technical messages such as:
+NaN undefined null Infinity stack traces
+Instead show:
+Something went wrong. Your current case has been preserved.
+Buttons:
+RESTORE CASE
+RETRY
+REPORT ERROR
+
+───
+
+75. BRAND WATERMARK
+Use a subtle professional watermark:
+DR. AHMED ELSHEWI
+EMERGENCY MEDICINE CONSULTANT
+It must be:
+• Elegant
+• Small
+• Professional
+• Non-obstructive
+• Never interfere with clinical information
+
+───
+
+76. FINAL USER EXPERIENCE
+The doctor should feel:
+"I assess the patient.
+I enter the information once.
+The system understands the case.
+It understands that the patient may have several complaints.
+It connects the problems.
+It asks me only the next important question.
+It calculates GCS automatically.
+It calculates the relevant medical scores automatically.
+It identifies missing important information.
+It suggests appropriate investigations and explains why.
+It helps me think through the case.
+It checks medication safety.
+It builds my documentation automatically.
+I review it.
+I correct anything necessary.
+I finalize the case.
+I press:
+COPY COMPLETE CASE
+And the complete professional clinical documentation is ready."
+77. ABSOLUTE PRINCIPLES
+ENTER ONCE → USE EVERYWHERE
+ONE PATIENT → ONE CONNECTED CASE
+MULTIPLE COMPLAINTS ARE ALLOWED
+MULTIPLE DIAGNOSES ARE ALLOWED
+ASK ONLY IMPORTANT QUESTIONS
+CALCULATE RELEVANT SCORES AUTOMATICALLY
+GCS IS AUTOMATIC
+SBP AND DBP ARE SEPARATE DATA
+CORRECT WRONG DATA EASILY
+DO NOT USE CORRECTED DATA IN CURRENT CALCULATIONS
+NEVER FABRICATE
+NEVER INVENT A DOSE
+NEVER INVENT A GUIDELINE
+NEVER INVENT A FINDING
+AI SUGGESTS — PHYSICIAN CONFIRMS
+EVERYTHING CLINICALLY USEFUL MUST BE COPYABLE
+COPY COMPLETE CASE = ONE TAP
+WORK OFFLINE
+PROTECT PATIENT DATA
+PHYSICIAN REMAINS IN CONTROL
+78. FINAL PRODUCT
+Build:
+ULTRA-FAST INTELLIGENT CLINICAL AI COPILOT
+A global professional clinical platform combining:
+MULTI-SPECIALTY CLINICAL INTELLIGENCE
+MULTI-COMPLAINT CLINICAL REASONING
+AUTOMATIC MEDICAL SCORES
+AUTOMATIC GCS
+MEDICATION SAFETY
+EVIDENCE ENGINE
+CLINICAL SAFETY
+DOCUMENTATION-FIRST WORKFLOW
+ICD-10
+MCCHIS
+CONSULTANT SUMMARY
+ONE-TAP COPY
+OFFLINE-FIRST OPERATION
+SECURE ARCHITECTURE
+The product must be:
+FAST
+INTELLIGENT
+SAFE
+SIMPLE TO USE
+PROFESSIONAL
+GLOBAL
+SCALABLE
+OFFLINE-FIRST
+DOCUMENTATION-FIRST
+FINAL PRODUCT STATEMENT
+ULTRA-FAST INTELLIGENT CLINICAL AI COPILOT
+"From the patient's first complaint to the final clinical note — one intelligent clinical workflow."
+BUILD ORIGINAL.
+BUILD SAFE.
+BUILD FAST.
+BUILD DOCUMENTATION-FIRST.
+BUILD GLOBALLY.
+BUILD FOR REAL CLINICAL WORK.

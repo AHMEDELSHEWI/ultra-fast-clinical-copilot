@@ -31,7 +31,7 @@ for (const r of pack.reasoning.rules) {
     const src = d.sources.length ? d.sources.join(', ') : '**NEEDS SOURCE**';
     L.push(`- [ ] Must not miss: **${d.dx.en}** — ${d.why} (sources: ${src})`);
   }
-  for (const sc of r.scores) L.push(`- [ ] Score named: ${sc.name} — ${sc.why} (source: ${sc.source ?? '**NEEDS SOURCE**'}; adult-only: ${sc.adultOnly})`);
+  for (const sc of r.scores) L.push(`- [ ] Relevant score: ${sc.id} — ${sc.why}`);
   L.push('');
 }
 L.push('## History questions', '', '| Sign-off | Id | Complaint(s) | Question | Red flag |', '|---|---|---|---|---|');
