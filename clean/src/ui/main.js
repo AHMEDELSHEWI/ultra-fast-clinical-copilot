@@ -696,7 +696,11 @@ function resusDose(drugId, useAdult, useChild, which = 1) {
   if (ctx.child === null) return { ok: false, reason: ui.lang === 'ar' ? 'اختر بالغ أو طفل' : 'Select adult or child' };
   const drug = DRUG_BY_ID[drugId];
   const use = drug.uses.find((u) => u.id === (ctx.child ? useChild : useAdult));
-  if (!ctx.child && which > 1 && use.second) return { ok: true, amount: use.second.fixed, unit: use.second.unit, text: `${use.second.fixed} ${use.second.unit} ${use.route}` };
+  if (!ctx.child && which > 1 && use.second) {
+    if (use.second.fixed !== undefined) return { ok: true, amount: use.second.fixed, unit: use.second.unit, text: `${use.second.fixed} ${use.second.unit} ${use.route}` };
+    const r2 = calcDose({ ...use, dose: use.second, freq: 'subsequent dose' }, ctx);
+    return r2.ok ? { ...r2, text: r2.text.replace(/\.$/, '') } : r2;
+  }
   if (ctx.child && drugId === 'amiodarone' && which > 1) {
     const r = calcDose(use, ctx); if (!r.ok) return r;
     const amt = Math.min(r.amount, 150); return { ok: true, amount: amt, unit: 'mg', text: `${+amt.toFixed(2)} mg ${use.route} (subsequent dose, max 150 mg)` };

@@ -53,7 +53,7 @@ export const DRUGS = [
   {
     id: 'lidocaine', name: 'Lidocaine (lignocaine)', synonyms: ['lignocaine', 'xylocaine', 'ليدوكايين'], cls: 'Class Ib antiarrhythmic', icon: ['heart', 'pink'],
     uses: [
-      { id: 'vf', label: 'Shock-refractory VF / pulseless VT', pop: 'adult', route: 'IV/IO', dose: { perKgRange: [1, 1.5], unit: 'mg' }, freq: 'second dose 0.5–0.75 mg/kg', source: 'aha2025_alg_ca', ref: '“First dose: 1-1.5 mg/kg. Second dose: 0.5-0.75 mg/kg.”' },
+      { id: 'vf', label: 'Shock-refractory VF / pulseless VT', pop: 'adult', route: 'IV/IO', dose: { perKgRange: [1, 1.5], unit: 'mg' }, freq: 'second dose 0.5–0.75 mg/kg', second: { perKgRange: [0.5, 0.75], unit: 'mg' }, source: 'aha2025_alg_ca', ref: '“First dose: 1-1.5 mg/kg. Second dose: 0.5-0.75 mg/kg.”' },
       { id: 'vf_ped', label: 'Shock-refractory VF / pulseless VT', pop: 'paediatric', route: 'IV/IO', dose: { perKg: 1, unit: 'mg' }, freq: 'alternative to amiodarone', source: 'aha2025_pals_ca', ref: '“Lidocaine IV/IO dose: 1 mg/kg”' },
     ],
     seven: {

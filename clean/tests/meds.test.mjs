@@ -96,3 +96,11 @@ test('calculators: Cockcroft-Gault, anion gap, QTc', () => {
   assert.equal(anionGap({ na: 140, cl: 104, hco3: 24 }), 12);
   assert.equal(qtcBazett({ qtMs: 400, hr: 60 }), 400);
 });
+
+test('lidocaine second dose is 0.5–0.75 mg/kg (2025 AHA), never a repeat of the first', () => {
+  const u = use('lidocaine', 'vf');
+  assert.deepEqual(u.second.perKgRange, [0.5, 0.75]);
+  const ctx = medContext(set(makeStore(), { 'patient.age': 50, 'vitals.weight': 80 }));
+  assert.match(calcDose({ ...u, dose: u.second, freq: 'subsequent dose' }, ctx).text, /^40–60 mg/);
+  assert.match(calcDose(u, ctx).text, /^80–120 mg/);
+});
