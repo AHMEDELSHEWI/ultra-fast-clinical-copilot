@@ -1,0 +1,1234 @@
+{
+ "id": "ufc-content",
+ "version": "2026.10.0-alpha.1",
+ "reviewStatus": "DRAFT — history questions authored for structure testing; pending consultant clinical review. Contains no drug doses.",
+ "complaints": [
+  {
+   "key": "chest_pain",
+   "noun": "chest pain",
+   "icon": "heart",
+   "label": {
+    "en": "Chest pain",
+    "ar": "ألم الصدر"
+   },
+   "synonyms": [
+    "chest pain",
+    "chest tightness",
+    "heart attack",
+    "mi",
+    "stemi",
+    "ألم الصدر",
+    "وجع الصدر",
+    "جلطة"
+   ]
+  },
+  {
+   "key": "dyspnea",
+   "noun": "shortness of breath",
+   "icon": "lungs",
+   "label": {
+    "en": "Shortness of breath",
+    "ar": "ضيق التنفس"
+   },
+   "synonyms": [
+    "dyspnea",
+    "dyspnoea",
+    "sob",
+    "breathless",
+    "ضيق التنفس",
+    "نهجان"
+   ]
+  },
+  {
+   "key": "abdominal_pain",
+   "noun": "abdominal pain",
+   "icon": "stomach",
+   "label": {
+    "en": "Abdominal pain",
+    "ar": "ألم البطن"
+   },
+   "synonyms": [
+    "abdominal pain",
+    "stomach ache",
+    "belly pain",
+    "ألم البطن",
+    "مغص"
+   ]
+  },
+  {
+   "key": "headache",
+   "noun": "headache",
+   "icon": "brain",
+   "label": {
+    "en": "Headache",
+    "ar": "الصداع"
+   },
+   "synonyms": [
+    "headache",
+    "migraine",
+    "head pain",
+    "صداع",
+    "شقيقة"
+   ]
+  }
+ ],
+ "questions": [
+  {
+   "id": "chest_pain.onset",
+   "fact": "hx.chest_pain.onset",
+   "type": "choice",
+   "prompt": {
+    "en": "How did it start?",
+    "ar": "كيف بدأت الأعراض؟"
+   },
+   "complaints": [
+    "chest_pain"
+   ],
+   "priority": 80,
+   "role": "onset",
+   "options": [
+    {
+     "v": "sudden",
+     "en": "Sudden",
+     "ar": "مفاجئ",
+     "doc": "of sudden onset"
+    },
+    {
+     "v": "gradual",
+     "en": "Gradual",
+     "ar": "تدريجي",
+     "doc": "of gradual onset"
+    }
+   ]
+  },
+  {
+   "id": "chest_pain.duration",
+   "fact": "hx.chest_pain.duration",
+   "type": "duration",
+   "prompt": {
+    "en": "How long has it been present?",
+    "ar": "منذ متى بدأت الأعراض؟"
+   },
+   "complaints": [
+    "chest_pain"
+   ],
+   "priority": 75,
+   "role": "duration",
+   "presets": [
+    {
+     "n": 30,
+     "unit": "min"
+    },
+    {
+     "n": 1,
+     "unit": "hour"
+    },
+    {
+     "n": 3,
+     "unit": "hour"
+    },
+    {
+     "n": 1,
+     "unit": "day"
+    },
+    {
+     "n": 1,
+     "unit": "week"
+    }
+   ]
+  },
+  {
+   "id": "chest_pain.pain",
+   "fact": "hx.chest_pain.pain",
+   "type": "scale",
+   "prompt": {
+    "en": "Pain score (0-10)?",
+    "ar": "شدة الألم (من 0 إلى 10)؟"
+   },
+   "complaints": [
+    "chest_pain"
+   ],
+   "priority": 70,
+   "role": "score",
+   "min": 0,
+   "max": 10
+  },
+  {
+   "id": "chest_pain.location",
+   "fact": "hx.chest_pain.location",
+   "type": "choice",
+   "prompt": {
+    "en": "Where is the pain?",
+    "ar": "أين مكان الألم؟"
+   },
+   "complaints": [
+    "chest_pain"
+   ],
+   "priority": 65,
+   "role": "location",
+   "options": [
+    {
+     "v": "central",
+     "en": "Central",
+     "ar": "مركزي",
+     "doc": "central",
+     "pos": "pre"
+    },
+    {
+     "v": "left",
+     "en": "Left-sided",
+     "ar": "الجهة اليسرى",
+     "doc": "left-sided",
+     "pos": "pre"
+    },
+    {
+     "v": "right",
+     "en": "Right-sided",
+     "ar": "الجهة اليمنى",
+     "doc": "right-sided",
+     "pos": "pre"
+    },
+    {
+     "v": "epigastric",
+     "en": "Epigastric",
+     "ar": "فوق المعدة",
+     "doc": "epigastric",
+     "pos": "pre"
+    }
+   ]
+  },
+  {
+   "id": "chest_pain.character",
+   "fact": "hx.chest_pain.character",
+   "type": "choice",
+   "prompt": {
+    "en": "What is the pain like?",
+    "ar": "كيف تصف الألم؟"
+   },
+   "complaints": [
+    "chest_pain"
+   ],
+   "priority": 60,
+   "role": "character",
+   "options": [
+    {
+     "v": "crushing",
+     "en": "Crushing",
+     "ar": "ضاغط",
+     "doc": "crushing",
+     "pos": "pre"
+    },
+    {
+     "v": "pressure",
+     "en": "Pressure / tightness",
+     "ar": "ضغط / انقباض",
+     "doc": "pressure-like",
+     "pos": "pre"
+    },
+    {
+     "v": "sharp",
+     "en": "Sharp",
+     "ar": "حاد",
+     "doc": "sharp",
+     "pos": "pre"
+    },
+    {
+     "v": "pleuritic",
+     "en": "Worse on breathing",
+     "ar": "يزداد مع التنفس",
+     "doc": "pleuritic",
+     "pos": "pre"
+    },
+    {
+     "v": "burning",
+     "en": "Burning",
+     "ar": "حارق",
+     "doc": "burning",
+     "pos": "pre"
+    }
+   ]
+  },
+  {
+   "id": "chest_pain.radiation",
+   "fact": "hx.chest_pain.radiation",
+   "type": "choice",
+   "prompt": {
+    "en": "Does the pain spread anywhere?",
+    "ar": "هل ينتشر الألم؟"
+   },
+   "complaints": [
+    "chest_pain"
+   ],
+   "priority": 55,
+   "role": "radiation",
+   "options": [
+    {
+     "v": "left_arm",
+     "en": "Left arm",
+     "ar": "الذراع الأيسر",
+     "doc": "radiating to the left arm"
+    },
+    {
+     "v": "jaw",
+     "en": "Jaw / neck",
+     "ar": "الفك / الرقبة",
+     "doc": "radiating to the jaw and neck"
+    },
+    {
+     "v": "back",
+     "en": "Back",
+     "ar": "الظهر",
+     "doc": "radiating to the back"
+    },
+    {
+     "v": "none",
+     "en": "No radiation",
+     "ar": "لا ينتشر",
+     "doc": "without radiation"
+    }
+   ]
+  },
+  {
+   "id": "dyspnea.onset",
+   "fact": "hx.dyspnea.onset",
+   "type": "choice",
+   "prompt": {
+    "en": "How did it start?",
+    "ar": "كيف بدأت الأعراض؟"
+   },
+   "complaints": [
+    "dyspnea"
+   ],
+   "priority": 80,
+   "role": "onset",
+   "options": [
+    {
+     "v": "sudden",
+     "en": "Sudden",
+     "ar": "مفاجئ",
+     "doc": "of sudden onset"
+    },
+    {
+     "v": "gradual",
+     "en": "Gradual",
+     "ar": "تدريجي",
+     "doc": "of gradual onset"
+    }
+   ]
+  },
+  {
+   "id": "dyspnea.duration",
+   "fact": "hx.dyspnea.duration",
+   "type": "duration",
+   "prompt": {
+    "en": "How long has it been present?",
+    "ar": "منذ متى بدأت الأعراض؟"
+   },
+   "complaints": [
+    "dyspnea"
+   ],
+   "priority": 75,
+   "role": "duration",
+   "presets": [
+    {
+     "n": 30,
+     "unit": "min"
+    },
+    {
+     "n": 1,
+     "unit": "hour"
+    },
+    {
+     "n": 3,
+     "unit": "hour"
+    },
+    {
+     "n": 1,
+     "unit": "day"
+    },
+    {
+     "n": 1,
+     "unit": "week"
+    }
+   ]
+  },
+  {
+   "id": "dyspnea.cough",
+   "fact": "sx.cough",
+   "type": "yesno",
+   "prompt": {
+    "en": "Cough?",
+    "ar": "هل يوجد سعال؟"
+   },
+   "complaints": [
+    "dyspnea"
+   ],
+   "priority": 50,
+   "role": "assoc",
+   "noun": "cough"
+  },
+  {
+   "id": "dyspnea.leg_swelling",
+   "fact": "sx.leg_swelling",
+   "type": "yesno",
+   "prompt": {
+    "en": "Leg swelling?",
+    "ar": "هل يوجد تورم في الساقين؟"
+   },
+   "complaints": [
+    "dyspnea"
+   ],
+   "priority": 45,
+   "role": "assoc",
+   "noun": "leg swelling"
+  },
+  {
+   "id": "abdominal_pain.onset",
+   "fact": "hx.abdominal_pain.onset",
+   "type": "choice",
+   "prompt": {
+    "en": "How did it start?",
+    "ar": "كيف بدأت الأعراض؟"
+   },
+   "complaints": [
+    "abdominal_pain"
+   ],
+   "priority": 80,
+   "role": "onset",
+   "options": [
+    {
+     "v": "sudden",
+     "en": "Sudden",
+     "ar": "مفاجئ",
+     "doc": "of sudden onset"
+    },
+    {
+     "v": "gradual",
+     "en": "Gradual",
+     "ar": "تدريجي",
+     "doc": "of gradual onset"
+    }
+   ]
+  },
+  {
+   "id": "abdominal_pain.duration",
+   "fact": "hx.abdominal_pain.duration",
+   "type": "duration",
+   "prompt": {
+    "en": "How long has it been present?",
+    "ar": "منذ متى بدأت الأعراض؟"
+   },
+   "complaints": [
+    "abdominal_pain"
+   ],
+   "priority": 75,
+   "role": "duration",
+   "presets": [
+    {
+     "n": 30,
+     "unit": "min"
+    },
+    {
+     "n": 1,
+     "unit": "hour"
+    },
+    {
+     "n": 3,
+     "unit": "hour"
+    },
+    {
+     "n": 1,
+     "unit": "day"
+    },
+    {
+     "n": 1,
+     "unit": "week"
+    }
+   ]
+  },
+  {
+   "id": "abdominal_pain.pain",
+   "fact": "hx.abdominal_pain.pain",
+   "type": "scale",
+   "prompt": {
+    "en": "Pain score (0-10)?",
+    "ar": "شدة الألم (من 0 إلى 10)؟"
+   },
+   "complaints": [
+    "abdominal_pain"
+   ],
+   "priority": 70,
+   "role": "score",
+   "min": 0,
+   "max": 10
+  },
+  {
+   "id": "abdominal_pain.location",
+   "fact": "hx.abdominal_pain.location",
+   "type": "choice",
+   "prompt": {
+    "en": "Where is the pain?",
+    "ar": "أين مكان الألم؟"
+   },
+   "complaints": [
+    "abdominal_pain"
+   ],
+   "priority": 65,
+   "role": "location",
+   "options": [
+    {
+     "v": "epigastric",
+     "en": "Epigastric",
+     "ar": "فوق المعدة",
+     "doc": "epigastric",
+     "pos": "pre"
+    },
+    {
+     "v": "ruq",
+     "en": "Right upper",
+     "ar": "أعلى اليمين",
+     "doc": "right upper quadrant",
+     "pos": "pre"
+    },
+    {
+     "v": "luq",
+     "en": "Left upper",
+     "ar": "أعلى اليسار",
+     "doc": "left upper quadrant",
+     "pos": "pre"
+    },
+    {
+     "v": "rlq",
+     "en": "Right lower",
+     "ar": "أسفل اليمين",
+     "doc": "right lower quadrant",
+     "pos": "pre"
+    },
+    {
+     "v": "llq",
+     "en": "Left lower",
+     "ar": "أسفل اليسار",
+     "doc": "left lower quadrant",
+     "pos": "pre"
+    },
+    {
+     "v": "periumbilical",
+     "en": "Around the navel",
+     "ar": "حول السرة",
+     "doc": "periumbilical",
+     "pos": "pre"
+    },
+    {
+     "v": "generalised",
+     "en": "All over",
+     "ar": "منتشر",
+     "doc": "generalised",
+     "pos": "pre"
+    }
+   ]
+  },
+  {
+   "id": "abdominal_pain.character",
+   "fact": "hx.abdominal_pain.character",
+   "type": "choice",
+   "prompt": {
+    "en": "What is the pain like?",
+    "ar": "كيف تصف الألم؟"
+   },
+   "complaints": [
+    "abdominal_pain"
+   ],
+   "priority": 60,
+   "role": "character",
+   "options": [
+    {
+     "v": "colicky",
+     "en": "Colicky (comes and goes)",
+     "ar": "مغص (يأتي ويذهب)",
+     "doc": "colicky",
+     "pos": "pre"
+    },
+    {
+     "v": "sharp",
+     "en": "Sharp / constant",
+     "ar": "حاد / مستمر",
+     "doc": "sharp",
+     "pos": "pre"
+    },
+    {
+     "v": "burning",
+     "en": "Burning",
+     "ar": "حارق",
+     "doc": "burning",
+     "pos": "pre"
+    },
+    {
+     "v": "dull",
+     "en": "Dull ache",
+     "ar": "وجع خفيف",
+     "doc": "dull",
+     "pos": "pre"
+    }
+   ]
+  },
+  {
+   "id": "abdominal_pain.radiation",
+   "fact": "hx.abdominal_pain.radiation",
+   "type": "choice",
+   "prompt": {
+    "en": "Does the pain spread anywhere?",
+    "ar": "هل ينتشر الألم؟"
+   },
+   "complaints": [
+    "abdominal_pain"
+   ],
+   "priority": 55,
+   "role": "radiation",
+   "options": [
+    {
+     "v": "back",
+     "en": "Back",
+     "ar": "الظهر",
+     "doc": "radiating to the back"
+    },
+    {
+     "v": "groin",
+     "en": "Groin",
+     "ar": "الأربية",
+     "doc": "radiating to the groin"
+    },
+    {
+     "v": "shoulder",
+     "en": "Shoulder",
+     "ar": "الكتف",
+     "doc": "radiating to the shoulder"
+    },
+    {
+     "v": "none",
+     "en": "No radiation",
+     "ar": "لا ينتشر",
+     "doc": "without radiation"
+    }
+   ]
+  },
+  {
+   "id": "abdominal_pain.diarrhoea",
+   "fact": "sx.diarrhoea",
+   "type": "yesno",
+   "prompt": {
+    "en": "Diarrhoea?",
+    "ar": "هل يوجد إسهال؟"
+   },
+   "complaints": [
+    "abdominal_pain"
+   ],
+   "priority": 48,
+   "role": "assoc",
+   "noun": "diarrhoea"
+  },
+  {
+   "id": "headache.onset",
+   "fact": "hx.headache.onset",
+   "type": "choice",
+   "prompt": {
+    "en": "How did it start?",
+    "ar": "كيف بدأت الأعراض؟"
+   },
+   "complaints": [
+    "headache"
+   ],
+   "priority": 80,
+   "role": "onset",
+   "options": [
+    {
+     "v": "sudden",
+     "en": "Sudden",
+     "ar": "مفاجئ",
+     "doc": "of sudden onset"
+    },
+    {
+     "v": "gradual",
+     "en": "Gradual",
+     "ar": "تدريجي",
+     "doc": "of gradual onset"
+    }
+   ]
+  },
+  {
+   "id": "headache.duration",
+   "fact": "hx.headache.duration",
+   "type": "duration",
+   "prompt": {
+    "en": "How long has it been present?",
+    "ar": "منذ متى بدأت الأعراض؟"
+   },
+   "complaints": [
+    "headache"
+   ],
+   "priority": 75,
+   "role": "duration",
+   "presets": [
+    {
+     "n": 30,
+     "unit": "min"
+    },
+    {
+     "n": 1,
+     "unit": "hour"
+    },
+    {
+     "n": 3,
+     "unit": "hour"
+    },
+    {
+     "n": 1,
+     "unit": "day"
+    },
+    {
+     "n": 1,
+     "unit": "week"
+    }
+   ]
+  },
+  {
+   "id": "headache.pain",
+   "fact": "hx.headache.pain",
+   "type": "scale",
+   "prompt": {
+    "en": "Pain score (0-10)?",
+    "ar": "شدة الألم (من 0 إلى 10)؟"
+   },
+   "complaints": [
+    "headache"
+   ],
+   "priority": 70,
+   "role": "score",
+   "min": 0,
+   "max": 10
+  },
+  {
+   "id": "headache.location",
+   "fact": "hx.headache.location",
+   "type": "choice",
+   "prompt": {
+    "en": "Where is the headache?",
+    "ar": "أين مكان الصداع؟"
+   },
+   "complaints": [
+    "headache"
+   ],
+   "priority": 65,
+   "role": "location",
+   "options": [
+    {
+     "v": "frontal",
+     "en": "Frontal",
+     "ar": "أمامي",
+     "doc": "frontal",
+     "pos": "pre"
+    },
+    {
+     "v": "occipital",
+     "en": "Back of head",
+     "ar": "خلفي",
+     "doc": "occipital",
+     "pos": "pre"
+    },
+    {
+     "v": "unilateral",
+     "en": "One side",
+     "ar": "جانب واحد",
+     "doc": "unilateral",
+     "pos": "pre"
+    },
+    {
+     "v": "generalised",
+     "en": "All over",
+     "ar": "منتشر",
+     "doc": "generalised",
+     "pos": "pre"
+    }
+   ]
+  },
+  {
+   "id": "headache.character",
+   "fact": "hx.headache.character",
+   "type": "choice",
+   "prompt": {
+    "en": "What is it like?",
+    "ar": "كيف تصف الصداع؟"
+   },
+   "complaints": [
+    "headache"
+   ],
+   "priority": 60,
+   "role": "character",
+   "options": [
+    {
+     "v": "throbbing",
+     "en": "Throbbing",
+     "ar": "نابض",
+     "doc": "throbbing",
+     "pos": "pre"
+    },
+    {
+     "v": "pressure",
+     "en": "Pressure / band-like",
+     "ar": "ضغط / كالحزام",
+     "doc": "pressure-like",
+     "pos": "pre"
+    },
+    {
+     "v": "stabbing",
+     "en": "Stabbing",
+     "ar": "طاعن",
+     "doc": "stabbing",
+     "pos": "pre"
+    }
+   ]
+  },
+  {
+   "id": "headache.neck_stiffness",
+   "fact": "sx.neck_stiffness",
+   "type": "yesno",
+   "prompt": {
+    "en": "Neck stiffness?",
+    "ar": "هل يوجد تيبس في الرقبة؟"
+   },
+   "complaints": [
+    "headache"
+   ],
+   "priority": 90,
+   "role": "assoc",
+   "noun": "neck stiffness",
+   "redFlag": true
+  },
+  {
+   "id": "headache.focal_weakness",
+   "fact": "sx.focal_weakness",
+   "type": "yesno",
+   "prompt": {
+    "en": "New weakness or numbness on one side?",
+    "ar": "ضعف أو خدر جديد في جانب واحد؟"
+   },
+   "complaints": [
+    "headache"
+   ],
+   "priority": 90,
+   "role": "assoc",
+   "noun": "focal weakness",
+   "redFlag": true
+  },
+  {
+   "id": "headache.visual",
+   "fact": "sx.visual_disturbance",
+   "type": "yesno",
+   "prompt": {
+    "en": "Visual disturbance?",
+    "ar": "اضطراب في الرؤية؟"
+   },
+   "complaints": [
+    "headache"
+   ],
+   "priority": 52,
+   "role": "assoc",
+   "noun": "visual disturbance"
+  },
+  {
+   "id": "sx.dyspnea",
+   "fact": "sx.dyspnea",
+   "type": "yesno",
+   "prompt": {
+    "en": "Shortness of breath?",
+    "ar": "هل يوجد ضيق في التنفس؟"
+   },
+   "complaints": [
+    "chest_pain",
+    "abdominal_pain"
+   ],
+   "priority": 58,
+   "role": "assoc",
+   "noun": "dyspnea",
+   "icon": "lungs"
+  },
+  {
+   "id": "sx.diaphoresis",
+   "fact": "sx.diaphoresis",
+   "type": "yesno",
+   "prompt": {
+    "en": "Sweating?",
+    "ar": "هل يوجد تعرّق؟"
+   },
+   "complaints": [
+    "chest_pain",
+    "dyspnea"
+   ],
+   "priority": 57,
+   "role": "assoc",
+   "noun": "diaphoresis"
+  },
+  {
+   "id": "sx.nausea",
+   "fact": "sx.nausea",
+   "type": "yesno",
+   "prompt": {
+    "en": "Nausea?",
+    "ar": "هل يوجد غثيان؟"
+   },
+   "complaints": [
+    "chest_pain",
+    "abdominal_pain",
+    "headache"
+   ],
+   "priority": 54,
+   "role": "assoc",
+   "noun": "nausea"
+  },
+  {
+   "id": "sx.vomiting",
+   "fact": "sx.vomiting",
+   "type": "yesno",
+   "prompt": {
+    "en": "Vomiting?",
+    "ar": "هل يوجد قيء؟"
+   },
+   "complaints": [
+    "abdominal_pain",
+    "headache",
+    "chest_pain"
+   ],
+   "priority": 53,
+   "role": "assoc",
+   "noun": "vomiting"
+  },
+  {
+   "id": "sx.syncope",
+   "fact": "sx.syncope",
+   "type": "yesno",
+   "prompt": {
+    "en": "Did the patient faint or nearly faint?",
+    "ar": "هل حدث إغماء أو شبه إغماء؟"
+   },
+   "complaints": [
+    "chest_pain",
+    "dyspnea",
+    "headache"
+   ],
+   "priority": 56,
+   "role": "assoc",
+   "noun": "syncope",
+   "redFlag": true
+  },
+  {
+   "id": "sx.fever",
+   "fact": "sx.fever",
+   "type": "yesno",
+   "prompt": {
+    "en": "Fever?",
+    "ar": "هل توجد حمّى؟"
+   },
+   "complaints": [
+    "dyspnea",
+    "abdominal_pain",
+    "headache"
+   ],
+   "priority": 49,
+   "role": "assoc",
+   "noun": "fever"
+  },
+  {
+   "id": "allergy.status",
+   "fact": "allergy.status",
+   "type": "choice",
+   "prompt": {
+    "en": "Drug allergies?",
+    "ar": "هل توجد حساسية دوائية؟"
+   },
+   "complaints": [
+    "all"
+   ],
+   "priority": 86,
+   "role": "allergy",
+   "options": [
+    {
+     "v": "none",
+     "en": "No known drug allergy",
+     "ar": "لا توجد حساسية معروفة",
+     "doc": "No known drug allergies"
+    },
+    {
+     "v": "yes",
+     "en": "Allergy present",
+     "ar": "توجد حساسية",
+     "doc": "Drug allergy present",
+     "needsText": true,
+     "textPrompt": {
+      "en": "Which drug and reaction?",
+      "ar": "أي دواء وما التفاعل؟"
+     }
+    }
+   ],
+   "icon": "shield"
+  },
+  {
+   "id": "meds.anticoagulant",
+   "fact": "meds.anticoagulant",
+   "type": "yesno",
+   "prompt": {
+    "en": "On blood thinners (anticoagulant / antiplatelet)?",
+    "ar": "هل يتناول مميّعات الدم؟"
+   },
+   "complaints": [
+    "all"
+   ],
+   "priority": 84,
+   "role": "meds",
+   "noun": "anticoagulant or antiplatelet therapy",
+   "icon": "syringe"
+  },
+  {
+   "id": "preg.status",
+   "fact": "preg.status",
+   "type": "choice",
+   "prompt": {
+    "en": "Could the patient be pregnant?",
+    "ar": "هل يمكن أن تكون المريضة حاملاً؟"
+   },
+   "complaints": [
+    "all"
+   ],
+   "priority": 88,
+   "role": "preg",
+   "askIf": {
+    "all": [
+     {
+      "fact": "patient.sex",
+      "eq": "female"
+     },
+     {
+      "fact": "patient.age",
+      "gte": 12
+     },
+     {
+      "fact": "patient.age",
+      "lte": 55
+     }
+    ]
+   },
+   "options": [
+    {
+     "v": "no",
+     "en": "Not pregnant",
+     "ar": "غير حامل",
+     "doc": "Not pregnant"
+    },
+    {
+     "v": "yes",
+     "en": "Pregnant",
+     "ar": "حامل",
+     "doc": "Pregnant"
+    },
+    {
+     "v": "possible",
+     "en": "Possible / unsure",
+     "ar": "محتمل / غير متأكدة",
+     "doc": "Pregnancy possible, not excluded"
+    }
+   ],
+   "icon": "pregnancy"
+  },
+  {
+   "id": "pmh.diabetes",
+   "fact": "pmh.diabetes",
+   "type": "yesno",
+   "prompt": {
+    "en": "Diabetes?",
+    "ar": "هل لديه سكري؟"
+   },
+   "complaints": [
+    "all"
+   ],
+   "priority": 40,
+   "role": "pmh",
+   "noun": "diabetes mellitus"
+  },
+  {
+   "id": "pmh.hypertension",
+   "fact": "pmh.hypertension",
+   "type": "yesno",
+   "prompt": {
+    "en": "Hypertension?",
+    "ar": "هل لديه ارتفاع ضغط؟"
+   },
+   "complaints": [
+    "all"
+   ],
+   "priority": 39,
+   "role": "pmh",
+   "noun": "hypertension"
+  },
+  {
+   "id": "social.smoking",
+   "fact": "social.smoking",
+   "type": "choice",
+   "prompt": {
+    "en": "Smoking?",
+    "ar": "التدخين؟"
+   },
+   "complaints": [
+    "chest_pain",
+    "dyspnea"
+   ],
+   "priority": 38,
+   "role": "social",
+   "options": [
+    {
+     "v": "current",
+     "en": "Current smoker",
+     "ar": "مدخّن حالي",
+     "doc": "Current smoker"
+    },
+    {
+     "v": "ex",
+     "en": "Ex-smoker",
+     "ar": "مدخّن سابق",
+     "doc": "Ex-smoker"
+    },
+    {
+     "v": "never",
+     "en": "Never smoked",
+     "ar": "لم يدخّن قط",
+     "doc": "Non-smoker"
+    }
+   ]
+  }
+ ],
+ "exam": [
+  {
+   "key": "resp",
+   "title": {
+    "en": "Respiratory",
+    "ar": "الصدر"
+   },
+   "findings": [
+    {
+     "fact": "exam.resp.normal",
+     "label": {
+      "en": "Normal breath sounds",
+      "ar": "أصوات تنفس طبيعية"
+     },
+     "doc": "normal breath sounds",
+     "excludes": [
+      "exam.resp.wheeze",
+      "exam.resp.crackles"
+     ]
+    },
+    {
+     "fact": "exam.resp.wheeze",
+     "label": {
+      "en": "Wheeze",
+      "ar": "أزيز"
+     },
+     "doc": "wheeze present",
+     "excludes": [
+      "exam.resp.normal"
+     ]
+    },
+    {
+     "fact": "exam.resp.crackles",
+     "label": {
+      "en": "Crackles",
+      "ar": "خراخر"
+     },
+     "doc": "crackles present",
+     "excludes": [
+      "exam.resp.normal"
+     ]
+    }
+   ]
+  },
+  {
+   "key": "cvs",
+   "title": {
+    "en": "Cardiovascular",
+    "ar": "القلب"
+   },
+   "findings": [
+    {
+     "fact": "exam.cvs.normal",
+     "label": {
+      "en": "Heart sounds normal",
+      "ar": "أصوات القلب طبيعية"
+     },
+     "doc": "normal heart sounds",
+     "excludes": [
+      "exam.cvs.murmur"
+     ]
+    },
+    {
+     "fact": "exam.cvs.murmur",
+     "label": {
+      "en": "Murmur",
+      "ar": "نفخة"
+     },
+     "doc": "murmur present",
+     "excludes": [
+      "exam.cvs.normal"
+     ]
+    },
+    {
+     "fact": "exam.cvs.oedema",
+     "label": {
+      "en": "Peripheral oedema",
+      "ar": "وذمة طرفية"
+     },
+     "doc": "peripheral oedema present",
+     "excludes": []
+    }
+   ]
+  },
+  {
+   "key": "abd",
+   "title": {
+    "en": "Abdomen",
+    "ar": "البطن"
+   },
+   "findings": [
+    {
+     "fact": "exam.abd.soft",
+     "label": {
+      "en": "Soft, non-tender",
+      "ar": "لين وغير مؤلم"
+     },
+     "doc": "soft and non-tender",
+     "excludes": [
+      "exam.abd.tender",
+      "exam.abd.guarding"
+     ]
+    },
+    {
+     "fact": "exam.abd.tender",
+     "label": {
+      "en": "Tenderness",
+      "ar": "ألم عند الجس"
+     },
+     "doc": "tenderness present",
+     "excludes": [
+      "exam.abd.soft"
+     ]
+    },
+    {
+     "fact": "exam.abd.guarding",
+     "label": {
+      "en": "Guarding",
+      "ar": "تحفّز"
+     },
+     "doc": "guarding present",
+     "excludes": [
+      "exam.abd.soft"
+     ]
+    }
+   ]
+  }
+ ]
+}

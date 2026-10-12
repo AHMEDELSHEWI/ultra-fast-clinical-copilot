@@ -1,0 +1,14 @@
+{
+  "name": "ultra-fast-clinical-copilot",
+  "version": "2.0.0-alpha.1",
+  "private": true,
+  "type": "module",
+  "description": "Clinical decision support and documentation (Phase 1 core). Clinician verification required.",
+  "scripts": {
+    "test": "node --test \"tests/*.test.mjs\"",
+    "build": "node tools/build.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.10"
+  }
+}
