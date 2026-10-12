@@ -1,7 +1,7 @@
 {
  "id": "ufc-content",
- "version": "2026.10.0-alpha.1",
- "reviewStatus": "DRAFT — history questions authored for structure testing; pending consultant clinical review. Contains no drug doses.",
+ "version": "2026.10.1-beta.1",
+ "reviewStatus": "DRAFT — pending consultant clinical review. Doses only where verified against cited sources; all other clinical text requires sign-off (see REVIEW.md).",
  "complaints": [
   {
    "key": "chest_pain",

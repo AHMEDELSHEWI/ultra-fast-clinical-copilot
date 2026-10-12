@@ -211,7 +211,7 @@ function topBar() {
   const age = store?.getFact('patient.age');
   const sex = store?.getFact('patient.sex');
   const pt = inCase ? `<div class="pt">
-      <button class="chip blue" data-act="edit-demo" data-kind="age" ${isFinal() ? 'disabled' : ''}>${icon('user')}${esc(typeof age === 'number' ? `${age} y` : t('age'))}</button>
+      <button class="chip blue" data-act="edit-demo" data-kind="age" ${isFinal() ? 'disabled' : ''}>${icon('user')}${esc(typeof age === 'number' ? `${age} ${ui.lang === 'ar' ? 'سنة' : 'y'}` : t('age'))}</button>
       <button class="chip blue" data-act="edit-demo" data-kind="sex" ${isFinal() ? 'disabled' : ''}>${esc(sex ? t(sex) : t('sex'))}</button>
       ${store.state.demo ? `<span class="badge demo">${t('demoBadge')}</span>` : ''}${isFinal() ? `<span class="badge final">${t('finalBadge')}</span>` : ''}</div>` : '';
   return `<header class="top"><div class="top-in">

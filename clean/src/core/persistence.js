@@ -1,7 +1,7 @@
 // Local-first persistence. Patient data never leaves the device.
 // Adapters share one tiny interface so the same logic runs on IndexedDB (browser) and memory (tests).
 
-export const APP_VERSION = '2.0.0-alpha.1';
+export const APP_VERSION = '2.1.0-beta.1';
 export const BACKUP_FORMAT = 'UFC_BACKUP';
 
 export class MemoryAdapter {

@@ -65,3 +65,16 @@ tools/        build.mjs
 - Adult-validated scores are hidden for age < 18 or unknown age.
 - `npm run review` regenerates `REVIEW.md`, the consultant sign-off checklist. Rows marked NEEDS SOURCE have no verified citation yet.
 - Sources were verified in PubMed (title, year, DOI, PMID). UpToDate and the textbooks were not accessible; nothing is copied from them.
+
+
+## Release 2.1.0-beta.1 — professional rebuild
+
+- **Design**: original colourful SVG medical icon set, white hospital-grade layout, patient strip (vitals, GCS, NEWS2, alert count), "What matters now" dashboard, desktop 3-column layout with live note, mobile bottom navigation, Arabic RTL.
+- **Shared clinical facts** (`src/content/facts.js`): each fact asked once and reused by scores, investigations, medications and every document.
+- **Score engine** (`src/core/scoreEngine.js`, `src/content/scores.js`): 17 validated scores — HEART, EDACS, TIMI, Wells PE, PERC, sPESI, Wells DVT, NEWS2, qSOFA, CURB-65, Canadian Syncope Risk Score, CHA₂DS₂-VASc (+VA), HAS-BLED, Ottawa SAH, Canadian CT Head, Alvarado, Glasgow-Blatchford. Auto-calculated from existing data; asks only the missing input; components, interpretation, limitations, source and version shown; COPY SCORE.
+- **Investigation engine**: DO NOW / DO SOON / CONSIDER / NOT ROUTINELY INDICATED with WHY and sources; score-dependent (e.g. CTPA if Wells > 4, D-dimer not routine if PERC negative).
+- **Medication engine** (`src/content/drugs.js`, `src/core/meds.js`): doses only where verified against the 2025 AHA algorithms, WAO 2020 or SSC 2021 (with the quoted text); weight-based arithmetic with caps; paediatric safety (adult doses never shown to children, weight required); allergy, drug-disease and cumulative-maximum checks; 7-line MEDICATION DETAILS; record as given.
+- **Resuscitation mode**: CPR cycle, total and epinephrine timers; adult and paediatric doses and shock energies; Hs & Ts; every action time-stamped into the note.
+- **Documentation**: consultant summary, referral (clinician question only), discharge, bilingual patient instructions, ICD-10 (WHO) with clinician confirmation, MCCHIS (SOAP until the hospital template is supplied), final case screen with one-tap copies.
+- **Natural-language intake** (EN/AR, offline): free text parsed into a confirmation list; nothing saved until confirmed; the interview skips what was already entered.
+- 112 unit tests + end-to-end browser test. `npm run review` regenerates REVIEW.md (all clinical content needs consultant sign-off).
