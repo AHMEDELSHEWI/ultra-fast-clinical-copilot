@@ -18,6 +18,7 @@ import { suggestInvestigations, invKey } from '../core/investigations.js';
 import { DRUGS, DRUG_BY_ID, DRUG_REVIEW } from '../content/drugs.js';
 import { calcDose, medContext, safetyChecks, suggestMeds, administered } from '../core/meds.js';
 import { OUTPUTS, icdSuggestions, suggestedSpecialties } from '../core/outputs.js';
+import { parseIntake } from '../core/nlp.js';
 import { icon, tile, COMPLAINT_ICON } from './icons.js';
 import { makeT } from './i18n.js';
 
@@ -306,6 +307,18 @@ function intakeView() {
         ${speech ? `<button class="btn small" data-act="dictate">${icon('mic')}${esc(t('dictate'))}</button>` : ''}</div>
     </div>
     <button class="btn primary block" data-act="intake-submit">${esc(t('continue'))}</button></div></main>`;
+}
+
+function detectedView() {
+  const d = ui.detected;
+  const label = (k) => { const sp = specFor(k); const def = sp.question ?? sp.def; return def ? L(def.prompt).replace(/\?$/, '') : k === 'allergy.status.detail' ? (ui.lang === 'ar' ? 'تفاصيل الحساسية' : 'Allergy details') : k; };
+  const val = (k, v) => (k === 'allergy.status.detail' ? String(v) : displayValue(k, v));
+  return `<main><div class="content stack"><h2>${esc(ui.lang === 'ar' ? 'ما تم استخراجه من النص' : 'Detected from your text')}</h2>
+    <div class="notice">${icon('shield')}<span>${esc(ui.lang === 'ar' ? 'استخراج محلي دون إنترنت. لا يُحفظ شيء قبل تأكيدك — ألغِ أي عنصر غير صحيح.' : 'Offline extraction. Nothing is saved until you confirm — untick anything that is wrong.')}</span></div>
+    ${d.complaints.length ? `<h3>${esc(t('chooseComplaint'))}</h3><div class="cgrid">${d.complaints.map((c, i) => { const cc = complaintByKey(c.key); return `<button class="copt ${c.on ? 'on' : ''}" data-act="det-toggle" data-kind="c" data-i="${i}">${cTile(cc)}<span>${esc(L(cc.label))}</span>${c.on ? `<span class="tick">${icon('check')}</span>` : ''}</button>`; }).join('')}</div>` : ''}
+    ${d.facts.length ? `<h3>${esc(ui.lang === 'ar' ? 'معلومات' : 'Findings')}</h3>${d.facts.map((f, i) => `<button class="scorecard" data-act="det-toggle" data-kind="f" data-i="${i}">${tile(f.on ? 'check' : 'x', f.on ? 'green' : 'slate', 'sm')}<span class="body"><span class="title">${esc(label(f.key))}</span></span><b>${esc(val(f.key, f.value))}</b></button>`).join('')}` : ''}
+    <button class="btn primary block" data-act="det-apply">${icon('check')}${esc(ui.lang === 'ar' ? 'تأكيد ومتابعة' : 'Confirm and continue')}</button>
+    <button class="btn ghost block" data-act="det-skip">${esc(ui.lang === 'ar' ? 'تخطي' : 'Skip')}</button></div></main>`;
 }
 
 function complaintListHtml() {
@@ -871,6 +884,7 @@ function render() {
     else if (ui.screen === 'home' || !store) body = homeView();
     else if (ui.screen === 'intake') body = intakeView();
     else if (ui.screen === 'complaints') body = complaintsView();
+    else if (ui.screen === 'detected') body = detectedView();
     else body = caseView();
     root.innerHTML = `${topBar()}${body}`;
     const mainEl = root.querySelector('main .content') ?? root.querySelector('main');
@@ -993,11 +1007,31 @@ const handlers = {
     const age = num(ui.intake.age);
     const ageUnknown = ui.intake.age === '';
     if (!ageUnknown && (Number.isNaN(age) || age < 0 || age > 120)) { toast('Age must be 0–120.', true); return; }
+    const parsed = ui.intake.text.trim() ? parseIntake(ui.intake.text, pack) : null;
+    if (parsed && ageUnknown && typeof parsed.age === 'number') { ui.intake.age = String(parsed.age); return handlers['intake-submit'](); }
+    if (parsed && !ui.intake.sex && parsed.sex) ui.intake.sex = parsed.sex;
     if (!ui.intake.sex) { toast(t('sex'), true); return; }
     if (ageUnknown) store.markUnknown('patient.age'); else store.setFact('patient.age', age, { origin: 'clinician' });
     if (ui.intake.sex === 'unknown') store.markUnknown('patient.sex'); else store.setFact('patient.sex', ui.intake.sex, { origin: 'clinician' });
     if (ui.intake.text.trim()) store.setFact('patient.presentation', ui.intake.text.trim(), { origin: 'clinician' });
+    if (parsed && (parsed.complaints.length || Object.keys(parsed.facts).length)) {
+      ui.detected = { complaints: parsed.complaints.map((key) => ({ key, on: true })), facts: Object.entries(parsed.facts).map(([key, value]) => ({ key, value, on: true })) };
+      ui.screen = 'detected'; render(); return;
+    }
     ui.screen = 'complaints'; render();
+  },
+  'det-toggle': (d) => { const arr = d.kind === 'c' ? ui.detected.complaints : ui.detected.facts; arr[Number(d.i)].on = !arr[Number(d.i)].on; render(); },
+  'det-skip': () => { ui.detected = null; ui.screen = 'complaints'; render(); },
+  'det-apply': () => {
+    const skipped = [];
+    for (const c of ui.detected.complaints) if (c.on) store.addComplaint(c.key);
+    for (const f of ui.detected.facts) {
+      if (!f.on) continue;
+      const r = store.setFact(f.key, f.value, { origin: 'clinician', reason: 'From clinician free-text entry' });
+      if (!r.ok) skipped.push(f.key);
+    }
+    if (skipped.length) toast(`${skipped.length} item(s) conflicted with existing data and were not changed.`, true);
+    ui.detected = null; ui.screen = 'complaints'; render();
   },
   'toggle-complaint': (d) => { if (store.activeComplaints().includes(d.key)) store.resolveComplaint(d.key, 'Deselected'); else store.addComplaint(d.key); },
   'search-complaint': (d) => {

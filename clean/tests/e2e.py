@@ -228,6 +228,19 @@ def main():
         check(page.inner_text('[data-timer="epi"]') not in ('', '--:--', '—'), 'epinephrine timer running')
         check('RESUSCITATION' in page.evaluate("window.__UFC.copy('complete')") and 'Cardiac arrest — CPR started' in page.evaluate("window.__UFC.copy('complete')"), 'resuscitation events documented in the note')
 
+        # ---- natural-language intake (offline), confirmed before saving
+        page.click('[data-act="home"]'); page.click('[data-act="new-case"]')
+        page.fill('#text', '55-year-old male diabetic and hypertensive with crushing central chest pain for 30 minutes, sweating and nauseated.')
+        page.click('[data-act="intake-submit"]')
+        dt = page.inner_text('main')
+        check('Detected from your text' in dt and 'Chest pain' in dt and 'Diabetes' in dt, 'free text parsed into a confirmation list')
+        check(page.evaluate("window.__UFC.store.getFact('pmh.diabetes')") is None, 'nothing saved before confirmation')
+        page.click('[data-act="det-apply"]')
+        check(page.evaluate("[window.__UFC.store.getFact('patient.age'), window.__UFC.store.getFact('pmh.diabetes'), window.__UFC.store.getFact('hx.chest_pain.character')]") == [55, 'yes', 'crushing'], 'confirmed items saved once and reused')
+        page.click('[data-act="start-interview"]')
+        asked = page.inner_text('.q')
+        check('Diabetes' not in asked and 'crushing' not in asked.lower(), 'interview does not re-ask what was already entered')
+
         # ---- score library (calculator mode, nothing saved)
         page.click('[data-act="home"]'); page.click('[data-act="library"]')
         page.click('[data-act="open-score"][data-id="qsofa"]')
