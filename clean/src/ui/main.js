@@ -15,6 +15,8 @@ import { buildDemoStore } from '../core/demo.js';
 import { relevantScores, evaluateById, nextScoreInput, pendingHistoryInputs, askSpec, readingsOf } from '../core/workup.js';
 import { scoreText } from '../core/scoreEngine.js';
 import { suggestInvestigations, invKey } from '../core/investigations.js';
+import { DRUGS, DRUG_BY_ID, DRUG_REVIEW } from '../content/drugs.js';
+import { calcDose, medContext, safetyChecks, suggestMeds, administered } from '../core/meds.js';
 import { icon, tile, COMPLAINT_ICON } from './icons.js';
 import { makeT } from './i18n.js';
 
@@ -210,6 +212,7 @@ function topBar() {
     <button class="brand" data-act="home" aria-label="Home"><span class="mark">${icon('pulse')}</span>
       <span class="${inCase ? 'hide-sm' : ''}"><b>${esc(t('appShort'))}</b><small>${esc(t('brandSub'))}</small></span></button>
     <div class="grow">${pt}</div>
+    <button class="iconbtn" data-act="resus-open" aria-label="Resuscitation" style="color:var(--red);border-color:var(--red-bd);background:var(--red-bg)">${icon('zap')}</button>
     <button class="iconbtn" data-act="open-search" aria-label="${esc(t('searchAll'))}">${icon('search')}</button>
     <button class="langbtn" data-act="lang">${esc(t('language'))}</button></div></header>`;
 }
@@ -496,20 +499,82 @@ function thinkView() {
     <h3>${esc(t('specialtiesT'))}</h3><div class="row">${r.specialties.map((s) => `<span class="chip purple">${esc(s)}</span>`).join('')}</div></div>`;
 }
 
-// ---------------------------------------------------------------- case: TREAT (treatments + reassessment)
+// ---------------------------------------------------------------- case: TREAT (medications, treatments, reassessment)
 const RESPONSES = [['improved', 'improved'], ['partial', 'partial'], ['no_change', 'noChange'], ['worse', 'worse'], ['new_problem', 'newProblem'], ['unable', 'unableAssess']];
+const FLAG_CLS = { critical: 'danger', important: 'warn', caution: 'caution', info: 'info' };
+const FLAG_LBL = { critical: 'critical', important: 'important', caution: 'cautionL', info: 'infoL' };
+function flagHtml(f) { return `<div class="alert ${FLAG_CLS[f.level]}">${icon(f.level === 'info' ? 'info' : 'alert')}<div><span class="t"><span class="lvl"><span>${esc(t(FLAG_LBL[f.level]))}</span></span> ${esc(f.text)}</span></div></div>`; }
+
 function treatView() {
   const ro = isFinal();
-  const tx = store.timeline().filter((e) => e.type === 'treatment');
+  const sug = suggestMeds(pack, store);
+  const ctx = medContext(store);
+  const tx = store.timeline().filter((e) => e.type === 'treatment' || e.type === 'medication');
   const re = store.timeline().filter((e) => e.type === 'reassessment');
+  const q = (ui.drugSearch ?? '').trim().toLowerCase();
+  const lib = DRUGS.filter((d) => !q || d.name.toLowerCase().includes(q) || d.synonyms.some((x) => x.toLowerCase().includes(q)) || d.cls.toLowerCase().includes(q));
+  const sugHtml = sug.length ? sug.map(({ drug, use, why }) => {
+    const dose = calcDose(use, ctx);
+    return `<button class="scorecard" data-act="open-drug" data-id="${drug.id}" data-use="${use.id}">${tile(drug.icon[0], drug.icon[1], 'sm')}
+      <span class="body"><span class="title">${esc(drug.name)} — ${esc(use.label)}</span><span class="sub" style="display:block">${esc(dose.ok ? dose.text : dose.reason)}</span><span class="tiny" style="display:block">${esc(why)}</span></span>${icon('chevron')}</button>`;
+  }).join('') : `<p class="muted">${esc(t('noRelevant'))}</p>`;
   return `<div class="stack">
-    <div class="card"><div class="card-h">${tile('syringe', 'purple')}<h4>${esc(t('treatmentsGiven'))}</h4></div>
+    ${ctx.child ? `<div class="alert info">${icon('baby')}<div><span class="t">${esc(ui.lang === 'ar' ? 'وضع سلامة الأطفال مفعّل' : 'Paediatric safety mode')}</span><small>${esc(ui.lang === 'ar' ? 'تظهر جرعات الأطفال فقط، ويلزم الوزن قبل أي جرعة محسوبة بالوزن.' : 'Only paediatric doses are shown; weight is required before any weight-based dose.')}</small></div></div>` : ''}
+    <div class="section-title" style="margin-top:0">${tile('syringe', 'purple', 'sm')}<h3>${esc(ui.lang === 'ar' ? 'أدوية ذات صلة' : 'Relevant medications')}</h3><span class="badge ai">${esc(t('aiLabel'))}</span></div>${sugHtml}
+    <div class="section-title">${tile('pill', 'purple', 'sm')}<h3>${esc(ui.lang === 'ar' ? 'مكتبة الأدوية' : 'Medication library')}</h3></div>
+    <label class="search">${icon('search')}<input id="dsearch" type="search" data-bind="dsearch" value="${esc(ui.drugSearch ?? '')}" placeholder="${esc(t('searchAll'))}" aria-label="${esc(t('searchAll'))}"></label>
+    <div id="dlist">${lib.map((d) => `<button class="scorecard" data-act="open-drug" data-id="${d.id}">${tile(d.icon[0], d.icon[1], 'sm')}<span class="body"><span class="title">${esc(d.name)}</span><span class="sub" style="display:block">${esc(d.cls)}</span></span>${icon('chevron')}</button>`).join('')}</div>
+    <p class="tiny">${esc(DRUG_REVIEW)}</p>
+    <div class="card"><div class="card-h">${tile('clipboard', 'blue')}<h4>${esc(t('treatmentsGiven'))}</h4></div>
       ${tx.length ? `<ul class="tl">${tx.map((e) => `<li><time>${esc(formatTime(e.at))}</time><span>${esc(e.text)}</span></li>`).join('')}</ul>` : `<p class="muted">${esc(t('noEvents'))}</p>`}
-      ${ro ? '' : `<div class="field" style="margin-top:12px"><label for="txtext">${esc(t('eventText'))}</label><input id="txtext" type="text" data-enter="add-treatment" placeholder="${ui.lang === 'ar' ? 'مثال: محلول ملحي 0.9% ١ لتر وريدي' : 'e.g. 0.9% saline 1 L IV'}"></div>
-      <button class="btn primary block" data-act="add-treatment">${icon('plus')}${esc(t('addEvent'))}</button>`}</div>
+      ${ro ? '' : `<div class="field" style="margin-top:12px"><label for="txtext">${esc(t('eventText'))}</label><input id="txtext" type="text" data-enter="add-treatment" placeholder="${ui.lang === 'ar' ? 'علاج آخر غير موجود في المكتبة' : 'Other treatment not in the library'}"></div>
+      <button class="btn block" data-act="add-treatment">${icon('plus')}${esc(t('addEvent'))}</button>`}</div>
     <div class="card"><div class="card-h">${tile('refresh', 'green')}<h4>${esc(t('response'))}</h4></div>
       ${ro ? '' : `<div class="answers">${RESPONSES.map(([v, k]) => `<button class="opt" data-act="reassess" data-v="${v}">${esc(t(k))}</button>`).join('')}</div>`}
       ${re.length ? `<ul class="tl" style="margin-top:12px">${re.map((e) => `<li><time>${esc(formatTime(e.at))}</time><span>${esc(e.text)}</span></li>`).join('')}</ul>` : ''}</div>
+  </div>`;
+}
+
+function drugSheet(sh) {
+  const drug = DRUG_BY_ID[sh.id];
+  const ctx = medContext(store);
+  const useId = sh.use ?? drug.uses.find((u) => calcDose(u, ctx).ok || (calcDose(u, ctx).needs ?? []).length)?.id ?? drug.uses[0].id;
+  const use = drug.uses.find((u) => u.id === useId);
+  const dose = calcDose(use, ctx);
+  const flags = safetyChecks(drug, use, ctx, store);
+  const segs = drug.uses.map((u) => {
+    const p = calcDose(u, ctx);
+    const blocked = !p.ok && !(p.needs ?? []).length && !p.unverified;
+    return `<button class="${u.id === useId ? 'on' : ''}" data-act="drug-use" data-use="${u.id}" ${blocked ? 'disabled title="' + esc(p.reason) + '"' : ''}>${esc(u.label)}${u.pop === 'paediatric' ? ' (child)' : u.pop === 'adult' ? ' (adult)' : ''}</button>`;
+  }).join('');
+  const needs = (dose.needs ?? []).map((k) => k === 'vitals.weight'
+    ? `<button class="btn primary block" data-act="vital" data-k="weight">${icon('user')}${esc(t('weight'))}</button>`
+    : `<button class="btn primary block" data-act="edit-demo" data-kind="age">${esc(t('age'))}</button>`).join('');
+  const s7 = drug.seven;
+  const line = (n, label, body) => `<div class="comp"><span class="pts">${n}</span><span class="grow"><b>${esc(label)}</b><br><span class="muted">${body}</span></span></div>`;
+  const list = (a) => (Array.isArray(a) ? a.map((x) => esc(x)).join('<br>') : esc(a));
+  const details = `<details class="card flat"><summary><b>${icon('list', { size: 16 })} ${esc(ui.lang === 'ar' ? 'تفاصيل الدواء (7 بنود)' : 'MEDICATION DETAILS (7 lines)')}</b></summary>
+    ${line(1, ui.lang === 'ar' ? 'الجرعة الأولية' : 'Initial dose', esc(dose.ok ? dose.text : dose.reason))}
+    ${line(2, ui.lang === 'ar' ? 'الهدف' : 'Target', list(s7.target))}
+    ${line(3, ui.lang === 'ar' ? 'المعايرة' : 'Titration', list(s7.titration))}
+    ${line(4, ui.lang === 'ar' ? 'الجرعة القصوى' : 'Maximum dose', list(s7.max))}
+    ${line(5, ui.lang === 'ar' ? 'تعديل الجرعة حسب الأمراض المصاحبة' : 'Dose adjustment (comorbidities)', list(s7.adjust))}
+    ${line(6, ui.lang === 'ar' ? 'الأعراض الجانبية وموانع الاستعمال' : 'Side effects & contraindications', list([...s7.adverse, ...s7.contraindications]))}
+    ${line(7, ui.lang === 'ar' ? 'علاج الأعراض الجانبية' : 'Management of side effects', list(s7.management))}
+    <div class="tiny" style="margin-top:8px">${esc(ui.lang === 'ar' ? 'المراقبة' : 'Monitoring')}: ${esc((drug.monitoring ?? []).join(' · '))}</div></details>`;
+  const canRecord = !isFinal() && dose.ok;
+  return `<div class="stack">
+    <div class="row">${tile(drug.icon[0], drug.icon[1], 'md')}<div class="grow"><h2>${esc(drug.name)}</h2><div class="tiny">${esc(drug.cls)}</div></div></div>
+    <div class="seg">${segs}</div>
+    <div class="card flat"><div class="tiny" style="font-weight:800;letter-spacing:.06em">${esc(use.label.toUpperCase())} · ${esc(use.route)}</div>
+      <div style="font-size:1.4rem;font-weight:900;margin-top:4px">${esc(dose.ok ? dose.text : '—')}</div>
+      ${dose.calc ? `<div class="chip blue" style="margin-top:6px">${icon('calc')}${esc(dose.calc)}</div>` : ''}
+      ${!dose.ok ? `<p class="muted" style="margin-top:6px">${esc(dose.reason)}</p>` : ''}
+      <div class="src">${esc(citationFor(pack, use.source) ?? use.source)}<br>${esc(use.ref)}</div></div>
+    ${needs}
+    ${flags.map(flagHtml).join('')}
+    ${details}
+    ${canRecord ? `<button class="btn green block" data-act="drug-record">${icon('check')}${esc(ui.lang === 'ar' ? 'تسجيل كدواء أُعطي' : 'RECORD AS GIVEN')}</button>` : ''}
   </div>`;
 }
 
@@ -559,6 +624,108 @@ function libraryView() {
     <div id="llist">${list.map((s) => `<button class="scorecard" data-act="open-score" data-id="${s.id}" data-scratch="1">${tile('calc', 'teal', 'sm')}<span class="body"><span class="title">${esc(s.name)}</span><span class="sub" style="display:block">${esc(s.use)}</span></span>${icon('chevron')}</button>`).join('')}</div></div></main>`;
 }
 
+
+// ================================================================ RESUSCITATION MODE
+const HS_TS = [['hypovolaemia', 'Hypovolaemia'], ['hypoxia', 'Hypoxia'], ['acidosis', 'Hydrogen ion (acidosis)'], ['potassium', 'Hypo-/hyperkalaemia'], ['hypothermia', 'Hypothermia'],
+  ['tension', 'Tension pneumothorax'], ['tamponade', 'Cardiac tamponade'], ['toxins', 'Toxins'], ['pe', 'Thrombosis, pulmonary'], ['mi', 'Thrombosis, coronary']];
+const resusEvents = () => (store ? store.timeline().filter((e) => e.type === 'resus') : []);
+const lastOf = (kind) => resusEvents().filter((e) => e.data?.kind === kind).at(-1);
+const mmss = (ms) => { const sec = Math.max(0, Math.floor(ms / 1000)); return `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`; };
+function resusCtx() {
+  const ctx = medContext(store);
+  if (ctx.child === null) { const p = store.getFact('resus.population'); if (p) ctx.child = p === 'child'; }
+  return ctx;
+}
+function resusDose(drugId, useAdult, useChild, which = 1) {
+  const ctx = resusCtx();
+  if (ctx.child === null) return { ok: false, reason: ui.lang === 'ar' ? 'اختر بالغ أو طفل' : 'Select adult or child' };
+  const drug = DRUG_BY_ID[drugId];
+  const use = drug.uses.find((u) => u.id === (ctx.child ? useChild : useAdult));
+  if (!ctx.child && which > 1 && use.second) return { ok: true, amount: use.second.fixed, unit: use.second.unit, text: `${use.second.fixed} ${use.second.unit} ${use.route}` };
+  if (ctx.child && drugId === 'amiodarone' && which > 1) {
+    const r = calcDose(use, ctx); if (!r.ok) return r;
+    const amt = Math.min(r.amount, 150); return { ok: true, amount: amt, unit: 'mg', text: `${+amt.toFixed(2)} mg ${use.route} (subsequent dose, max 150 mg)` };
+  }
+  const r = calcDose(use, ctx);
+  return r.ok ? { ...r, text: r.text.replace(/\.$/, '') } : r;
+}
+function shockGuide() {
+  const ctx = resusCtx();
+  if (ctx.child === null) return '';
+  if (!ctx.child) return ui.lang === 'ar' ? 'ثنائي الطور: حسب توصية الشركة (مثال 120–200 جول)، وإن لم تُعرف فاستخدم الأقصى. أحادي الطور: 360 جول.' : 'Biphasic: manufacturer recommendation (eg, initial 120–200 J); if unknown, use maximum available. Monophasic: 360 J.';
+  const n = resusEvents().filter((e) => e.data?.kind === 'shock').length;
+  const w = ctx.weight;
+  const jkg = n === 0 ? 2 : 4;
+  const calc = typeof w === 'number' ? ` = ${Math.round(jkg * w)} J` : (ui.lang === 'ar' ? ' (أدخل الوزن)' : ' (enter weight)');
+  return `${n === 0 ? 'First shock 2 J/kg' : n === 1 ? 'Second shock 4 J/kg' : 'Subsequent shocks ≥4 J/kg, maximum 10 J/kg or adult dose'}${calc}`;
+}
+function resusView() {
+  const started = lastOf('start');
+  const ctx = resusCtx();
+  const pop = ctx.child === null ? null : ctx.child ? 'child' : 'adult';
+  const ended = lastOf('end');
+  const popSeg = `<div class="seg">${[['adult', ui.lang === 'ar' ? 'بالغ' : 'Adult'], ['child', ui.lang === 'ar' ? 'طفل' : 'Child']].map(([v, l]) => `<button class="${pop === v ? 'on' : ''}" data-act="resus-pop" data-v="${v}" ${typeof store.getFact('patient.age') === 'number' ? 'disabled' : ''}>${esc(l)}</button>`).join('')}</div>`;
+  const quality = `<div class="card flat"><div class="card-h">${tile('heart', 'red', 'sm')}<h4>CPR quality (2025 AHA)</h4></div>
+    <p class="muted">${pop === 'child' ? 'Push fast 100–120/min; push hard ≥ 1/3 chest depth; 15:2 (2 rescuers, pre-puberty) or 30:2; with advanced airway 1 breath every 2–3 s.' : 'Push fast 100–120/min with full recoil; push hard at least 5 cm; minimise interruptions; with advanced airway 1 breath every 6 s (10/min).'}</p></div>`;
+  if (!started) {
+    return `<main><div class="content stack"><div class="alert danger">${icon('zap')}<div><span class="t">${esc(ui.lang === 'ar' ? 'وضع الإنعاش' : 'RESUSCITATION MODE')}</span><small>${esc(ui.lang === 'ar' ? 'كل حدث يُسجَّل بوقته تلقائياً في الخط الزمني والملاحظة.' : 'Every action is time-stamped into the timeline and the note.')}</small></div></div>
+      ${popSeg}${pop === 'child' && typeof ctx.weight !== 'number' ? `<button class="btn block" data-act="vital" data-k="weight">${icon('user')}${esc(t('weight'))}</button>` : ''}
+      <button class="btn danger block" style="min-height:84px;font-size:1.3rem" data-act="resus" data-kind="start" ${pop ? '' : 'disabled'}>${icon('zap')}${esc(ui.lang === 'ar' ? 'بدء الإنعاش (CPR)' : 'START CPR')}</button>${quality}</div></main>`;
+  }
+  const epi = resusDose('epinephrine', 'arrest', 'arrest_ped');
+  const amioN = resusEvents().filter((e) => e.data?.drug === 'amiodarone').length;
+  const amio = resusDose('amiodarone', 'vf', 'vf_ped', amioN + 1);
+  const lidoN = resusEvents().filter((e) => e.data?.drug === 'lidocaine').length;
+  const lido = resusDose('lidocaine', 'vf', 'vf_ped', lidoN + 1);
+  const shocks = resusEvents().filter((e) => e.data?.kind === 'shock').length;
+  const big = (act, kind, label, sub, cls = '') => `<button class="opt ${cls}" style="flex-direction:column;min-height:92px" data-act="${act}" data-kind="${kind}" ${ended ? 'disabled' : ''}><span>${esc(label)}</span>${sub ? `<span class="tiny">${esc(sub)}</span>` : ''}</button>`;
+  const causes = HS_TS.map(([k, l]) => `<button class="opt ${store.getFact(`resus.cause.${k}`) ? 'on' : ''}" style="min-height:48px;font-size:.84rem" data-act="resus-cause" data-k="${k}" data-l="${esc(l)}">${esc(l)}</button>`).join('');
+  const log = resusEvents().map((e) => `<li><time>${esc(formatTime(e.at))}</time><span>${esc(e.text)}</span></li>`).join('');
+  return `<main><div class="content stack">
+    <div class="card" style="border-color:var(--red-bd);background:var(--red-bg)"><div class="spread"><b style="color:var(--red)">${icon('zap', { size: 18 })} ${esc(ui.lang === 'ar' ? 'الإنعاش' : 'RESUSCITATION')} · ${esc(pop === 'child' ? (ui.lang === 'ar' ? 'طفل' : 'Child') : (ui.lang === 'ar' ? 'بالغ' : 'Adult'))}</b>
+      <button class="btn small" data-act="resus-exit">${esc(t('close'))}</button></div>
+      <div class="vgrid" style="margin-top:10px">
+        <div class="vt"><span class="lab">${icon('clock')}${esc(ui.lang === 'ar' ? 'الزمن الكلي' : 'Total')}</span><span class="val" data-timer="total">--:--</span></div>
+        <div class="vt"><span class="lab">${icon('refresh')}${esc(ui.lang === 'ar' ? 'دورة CPR' : 'CPR cycle')}</span><span class="val" data-timer="cycle">--:--</span><span class="trend" data-timer="cyclehint"></span></div>
+        <div class="vt"><span class="lab">${icon('syringe')}${esc(ui.lang === 'ar' ? 'منذ آخر إبينفرين' : 'Since epinephrine')}</span><span class="val" data-timer="epi">--:--</span><span class="trend" data-timer="epihint"></span></div>
+        <div class="vt"><span class="lab">${icon('zap')}${esc(ui.lang === 'ar' ? 'الصدمات' : 'Shocks')}</span><span class="val">${shocks}</span></div></div></div>
+    <h3>${esc(ui.lang === 'ar' ? 'فحص النظم' : 'Rhythm check')}</h3>
+    <div class="answers">${big('resus', 'shockable', ui.lang === 'ar' ? 'قابل للصدمة (VF/pVT)' : 'Shockable (VF/pVT)', '', '')}${big('resus', 'nonshockable', ui.lang === 'ar' ? 'غير قابل للصدمة (PEA/Asystole)' : 'Non-shockable (PEA/asystole)', '')}${big('resus', 'rosc', 'ROSC', '', 'yes')}</div>
+    <h3>${esc(ui.lang === 'ar' ? 'إجراءات' : 'Actions')}</h3>
+    <div class="answers">
+      ${big('resus', 'shock', ui.lang === 'ar' ? 'تم إعطاء صدمة' : 'Shock delivered', shockGuide())}
+      ${big('resus-drug', 'epinephrine', 'Epinephrine', epi.ok ? epi.text : epi.reason)}
+      ${big('resus-drug', 'amiodarone', `Amiodarone ${amioN ? `#${amioN + 1}` : ''}`, amio.ok ? amio.text : amio.reason)}
+      ${big('resus-drug', 'lidocaine', 'Lidocaine', lido.ok ? lido.text : lido.reason)}
+      ${big('resus', 'airway', ui.lang === 'ar' ? 'مجرى هواء متقدم' : 'Advanced airway', '')}
+      ${big('resus', 'access', ui.lang === 'ar' ? 'وصول وريدي / عظمي' : 'IV / IO access', '')}
+    </div>
+    <h3>${esc(ui.lang === 'ar' ? 'الأسباب القابلة للعكس' : 'Reversible causes (Hs & Ts)')}</h3><div class="exgrid">${causes}</div>
+    ${quality}
+    <h3>${esc(ui.lang === 'ar' ? 'السجل' : 'Log')}</h3><ul class="tl">${log}</ul>
+    ${ended ? '' : `<button class="btn block" data-act="resus-end">${esc(ui.lang === 'ar' ? 'إنهاء الإنعاش' : 'End resuscitation')}</button>`}
+    <p class="tiny">${esc(DRUG_REVIEW)}</p></div></main>`;
+}
+let resusTimer = null;
+function tickResus() {
+  if (ui.screen !== 'resus' || !store) return;
+  const now = Date.now();
+  const start = lastOf('start');
+  const set = (k, v) => { const el = document.querySelector(`[data-timer="${k}"]`); if (el) el.textContent = v; };
+  if (!start) return;
+  const end = lastOf('end') ?? lastOf('rosc');
+  set('total', mmss((end ? end.at : now) - start.at));
+  const lastCheck = [lastOf('shockable'), lastOf('nonshockable'), start].filter(Boolean).sort((a, b) => b.at - a.at)[0];
+  const remain = 120000 - (now - lastCheck.at);
+  set('cycle', remain > 0 ? mmss(remain) : '00:00');
+  set('cyclehint', remain > 0 ? '' : (ui.lang === 'ar' ? 'حان فحص النظم' : 'Rhythm check due'));
+  const e = resusEvents().filter((x) => x.data?.drug === 'epinephrine').at(-1);
+  if (e) {
+    const dt = now - e.at; set('epi', mmss(dt));
+    set('epihint', dt < 180000 ? (ui.lang === 'ar' ? 'انتظر' : 'wait') : dt <= 300000 ? (ui.lang === 'ar' ? 'مستحق الآن (3–5 دقائق)' : 'due (3–5 min)') : (ui.lang === 'ar' ? 'تجاوز 5 دقائق' : 'over 5 min'));
+  } else { set('epi', '—'); set('epihint', ''); }
+}
+
 // ================================================================ sheets (bottom sheets that re-render live)
 function sheetHtml() {
   const sh = ui.sheet;
@@ -568,6 +735,7 @@ function sheetHtml() {
   else if (sh.type === 'vital') inner = vitalSheet(sh);
   else if (sh.type === 'ask') inner = `${questionHtml(sh.key, { st: S() })}`;
   else if (sh.type === 'search') inner = searchSheet();
+  else if (sh.type === 'drug') inner = drugSheet(sh);
   return `<div class="modal-bg" data-act="close-sheet-bg"><div class="modal" role="dialog" aria-modal="true"><div class="grab"></div>
     <div class="spread" style="margin-bottom:8px"><span></span><button class="iconbtn" data-act="close-sheet" aria-label="${esc(t('close'))}">${icon('x')}</button></div>${inner}</div></div>`;
 }
@@ -657,6 +825,7 @@ function render() {
     const keep = active && active.id && (root.contains(active) || $('#sheet').contains(active)) ? { id: active.id, s: active.selectionStart } : null;
     let body = '';
     if (ui.screen === 'library') body = libraryView();
+    else if (ui.screen === 'resus' && store) body = resusView();
     else if (ui.screen === 'home' || !store) body = homeView();
     else if (ui.screen === 'intake') body = intakeView();
     else if (ui.screen === 'complaints') body = complaintsView();
@@ -665,6 +834,7 @@ function render() {
     const mainEl = root.querySelector('main .content') ?? root.querySelector('main');
     if (mainEl) mainEl.insertAdjacentHTML('beforeend', `<div class="wm" aria-hidden="true">${esc(t('watermark'))}</div>`);
     $('#sheet').innerHTML = sheetHtml();
+    if (ui.screen === 'resus') tickResus();
     if (keep) { const el = document.getElementById(keep.id); if (el) { el.focus(); try { el.setSelectionRange(keep.s, keep.s); } catch { /* not a text field */ } } }
     else if (ui.sheet) { const f = $('#sheet input'); if (f && f.type !== 'search') f.focus(); }
   } catch (e) { fail(e); }
@@ -746,7 +916,7 @@ async function saveVital() {
     if (mode === 'correct') store.correctFact(`vitals.${k}`, a, reasonTxt);
     else store.setFact(`vitals.${k}`, a, { origin: 'measurement', replace: has, reason: 'Repeat measurement' });
   }
-  ui.sheet = null; render();
+  ui.sheet = ui.sheet?.back ?? null; render();
 }
 
 const handlers = {
@@ -834,7 +1004,7 @@ const handlers = {
   'edit-q': (d) => { ui.editKey = d.key; ui.pendingText = null; ui.tab = 'history'; render(); },
   'cancel-edit': () => { ui.editKey = null; ui.pendingText = null; render(); },
   'ask-fact': (d) => { ui.sheet = { type: 'ask', key: d.key }; render(); },
-  'vital': (d) => { ui.sheet = { type: 'vital', k: d.k, mode: null }; render(); },
+  'vital': (d) => { ui.sheet = { type: 'vital', k: d.k, mode: null, back: ui.sheet?.type === 'drug' ? ui.sheet : null }; render(); },
   'vital-mode': (d) => { ui.sheet.mode = d.m; render(); },
   'vital-save': () => saveVital(),
   'vital-remove': () => {
@@ -883,6 +1053,69 @@ const handlers = {
     store.addEvent({ type: 'investigation', text: `${cat?.doc ?? d.id} requested` });
   },
   'inv-undo': (d) => { store.removeFact(invKey(d.id), 'Request withdrawn'); },
+  'resus-open': () => {
+    if (!store || isFinal()) adopt(new CaseStore(createCase({ language: ui.lang })), 'resus');
+    ui.screen = 'resus'; ui.sheet = null; render();
+  },
+  'resus-exit': () => { ui.screen = store.activeComplaints().length || store.state.events.length ? 'case' : 'case'; ui.tab = 'note'; render(); },
+  'resus-pop': (d) => { const cur = store.getFact('resus.population'); store.setFact('resus.population', d.v, { origin: 'clinician', replace: cur !== undefined, reason: 'Changed' }); },
+  'resus': async (d) => {
+    const TXT = { start: 'Cardiac arrest — CPR started.', shockable: 'Rhythm check: shockable rhythm (VF/pulseless VT).', nonshockable: 'Rhythm check: non-shockable rhythm (PEA/asystole).',
+      rosc: 'Return of spontaneous circulation (ROSC).', airway: 'Advanced airway placed.', access: 'IV/IO access obtained.' };
+    if (d.kind === 'shock') {
+      const n = resusEvents().filter((e) => e.data?.kind === 'shock').length + 1;
+      const r = await ask({ title: ui.lang === 'ar' ? 'طاقة الصدمة' : 'Shock energy', body: `<p class="muted">${esc(shockGuide())}</p>`, fields: [{ name: 'j', label: 'Joules', type: 'number' }],
+        actions: [{ id: 'ok', label: t('confirm'), kind: 'danger', needs: ['j'] }, { id: 'cancel', label: t('cancel') }] });
+      if (!r || r.action !== 'ok') return;
+      store.addEvent({ type: 'resus', text: `Shock ${n} delivered at ${r.values.j} J.`, data: { kind: 'shock', joules: num(r.values.j) } });
+      return;
+    }
+    store.addEvent({ type: 'resus', text: TXT[d.kind], data: { kind: d.kind } });
+  },
+  'resus-drug': async (d) => {
+    const map = { epinephrine: ['arrest', 'arrest_ped'], amiodarone: ['vf', 'vf_ped'], lidocaine: ['vf', 'vf_ped'] }[d.kind];
+    const n = resusEvents().filter((e) => e.data?.drug === d.kind).length + 1;
+    const dose = resusDose(d.kind, map[0], map[1], n);
+    if (!dose.ok) { toast(dose.reason, true); return; }
+    if (d.kind === 'amiodarone' && resusCtx().child && n > 3) { toast('Maximum 3 doses (2025 AHA PALS).', true); return; }
+    const drugU = DRUG_BY_ID[d.kind].uses.find((u) => u.id === (resusCtx().child ? map[1] : map[0]));
+    const shown = typeof dose.amount === 'number' ? `${+dose.amount.toFixed(3)} ${dose.unit} ${drugU.route}` : dose.text.split(',')[0];
+    store.addEvent({ type: 'resus', text: `${DRUG_BY_ID[d.kind].name} ${shown} given (dose ${n}).`, data: { kind: 'drug', drug: d.kind, amount: dose.amount, unit: dose.unit } });
+  },
+  'resus-cause': (d) => {
+    const key = `resus.cause.${d.k}`;
+    if (store.getFact(key)) store.removeFact(key, 'Unmarked'); else { store.setFact(key, 'considered', { origin: 'clinician' }); store.addEvent({ type: 'resus', text: `Reversible cause considered: ${d.l}.`, data: { kind: 'cause' } }); }
+  },
+  'resus-end': async () => {
+    const r = await ask({ title: ui.lang === 'ar' ? 'إنهاء الإنعاش' : 'End resuscitation', fields: [{ name: 'reason', label: t('reason') }], actions: [{ id: 'ok', label: t('confirm'), kind: 'danger', needs: ['reason'] }, { id: 'cancel', label: t('cancel') }] });
+    if (!r || r.action !== 'ok') return;
+    store.addEvent({ type: 'resus', text: `Resuscitation ended. ${r.values.reason}.`, data: { kind: 'end' } });
+  },
+  'open-drug': (d) => { ui.sheet = { type: 'drug', id: d.id, use: d.use || null }; render(); },
+  'drug-use': (d) => { ui.sheet.use = d.use; render(); },
+  'drug-record': async () => {
+    const drug = DRUG_BY_ID[ui.sheet.id];
+    const ctx = medContext(store);
+    const use = drug.uses.find((u) => u.id === (ui.sheet.use ?? drug.uses[0].id)) ?? drug.uses[0];
+    const dose = calcDose(use, ctx);
+    if (!dose.ok) return;
+    const flags = safetyChecks(drug, use, ctx, store);
+    let amount = dose.amount; let doseText = dose.amount !== undefined ? `${+amount.toFixed(3)} ${dose.unit}` : null;
+    const critical = flags.filter((f) => f.level === 'critical');
+    if (critical.length || doseText === null) {
+      const r = await ask({
+        title: critical.length ? t('critical') : (ui.lang === 'ar' ? 'الجرعة المعطاة' : 'Dose given'),
+        body: critical.map(flagHtml).join(''),
+        fields: [...(doseText === null ? [{ name: 'dose', label: `${ui.lang === 'ar' ? 'الجرعة المعطاة فعلياً' : 'Actual dose given'} (${dose.unit})`, type: 'number' }] : []), ...(critical.length ? [{ name: 'reason', label: t('reason') }] : [])],
+        actions: [{ id: 'ok', label: t('confirm'), kind: critical.length ? 'danger' : 'primary', needs: [...(doseText === null ? ['dose'] : []), ...(critical.length ? ['reason'] : [])] }, { id: 'cancel', label: t('cancel') }],
+      });
+      if (!r || r.action !== 'ok') return;
+      if (doseText === null) { amount = num(r.values.dose); if (!(amount > 0)) { toast(t('enterNumber'), true); return; } doseText = `${amount} ${dose.unit}`; }
+      if (critical.length) store.addEvent({ type: 'other', text: `Safety override for ${drug.name}: ${critical.map((f) => f.text).join(' ')} Reason: ${r.values.reason}.` });
+    }
+    store.addEvent({ type: 'medication', text: `${drug.name} ${doseText} ${use.route} given (${use.label.toLowerCase()}).`, data: { drug: drug.id, use: use.id, amount, unit: dose.unit } });
+    ui.sheet = null; toast(ui.lang === 'ar' ? 'تم التسجيل' : 'Recorded'); render();
+  },
   'dispo': (d) => {
     const cur = store.getFact('disposition.decision');
     store.setFact('disposition.decision', d.v, { origin: 'clinician', replace: cur !== undefined, reason: 'Updated by clinician' });
@@ -977,6 +1210,7 @@ function onInput(e) {
   else if (b === 'cn') ui.custom.n = e.target.value;
   else if (b === 'ptext' && ui.pendingText) ui.pendingText.text = e.target.value;
   else if (b === 'search') { ui.search = e.target.value; const list = $('#clist'); if (list) list.innerHTML = complaintListHtml(); }
+  else if (b === 'dsearch') { ui.drugSearch = e.target.value; const keep = e.target.selectionStart; render(); const el = $('#dsearch'); if (el) { el.focus(); el.setSelectionRange(keep, keep); } }
   else if (b === 'lsearch') { ui.librarySearch = e.target.value; const keep = e.target.selectionStart; render(); const el = $('#lsearch'); if (el) { el.focus(); el.setSelectionRange(keep, keep); } }
   else if (b === 'gsearch') {
     ui.globalSearch = e.target.value;
@@ -1036,8 +1270,9 @@ async function boot() {
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
     navigator.serviceWorker.register('./service-worker.js').catch(() => { /* offline support optional */ });
   }
+  resusTimer = setInterval(tickResus, 1000);
   render();
   if (!ui.storageOk) toast('Storage unavailable: data will not persist after closing.', true);
-  window.__UFC = { ui, get store() { return store; }, pack, version: APP_VERSION };
+  window.__UFC = { ui, get store() { return store; }, pack, version: APP_VERSION, copy: (target) => copyText(store, pack, target) };
 }
 boot();

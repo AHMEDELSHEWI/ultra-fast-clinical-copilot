@@ -13,6 +13,7 @@ export const COPY_TARGETS = Object.freeze({
   scores: 'Clinical scores',
   assessment: 'Assessment',
   reassessment: 'Reassessment',
+  resuscitation: 'Resuscitation',
   treatment: 'Treatment',
   disposition: 'Disposition',
   timeline: 'Timeline',

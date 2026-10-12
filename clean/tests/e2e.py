@@ -150,6 +150,15 @@ def main():
         page.click('[data-act="reassess"][data-v="partial"]')
         check('partial symptomatic improvement' in page.inner_text('main'), 'reassessment documented')
 
+        # ---- medication: verified dose, 7-line details, record as given
+        page.click('[data-act="open-drug"][data-id="adenosine"]')
+        sheet = page.inner_text('#sheet')
+        check('6 mg' in sheet and 'Adult Tachyarrhythmia' in sheet, 'adenosine dose shown with its 2025 AHA source')
+        page.click('#sheet details summary')
+        check('Management of side effects' in page.inner_text('#sheet'), 'MEDICATION DETAILS expands to 7 lines')
+        page.click('[data-act="drug-record"]')
+        check(any('Adenosine 6 mg' in e['text'] for e in page.evaluate("window.__UFC.store.state.events")), 'medication recorded with dose and time')
+
         # ---- timeline
         page.click('[data-tab="note"]'); page.click('[data-act="note-mode"][data-m="timeline"]')
         page.fill('#evtext', 'Cardiology contacted'); page.click('[data-act="add-event"]')
@@ -191,6 +200,20 @@ def main():
         note = page.inner_text('main')
         check('clinician-confirmed' in note and 'Pulmonary embolism' in note, 'accepted consideration appears in the note')
         check('Acute coronary syndrome' not in note, 'unaccepted suggestions do not appear in the note')
+
+        # ---- resuscitation mode: timers, weight-based paediatric doses, everything time-stamped
+        page.click('[data-act="home"]'); page.click('[data-act="new-case"]'); page.fill('#age', '6'); page.click('[data-act="sex"][data-v="female"]'); page.click('[data-act="intake-submit"]')
+        page.click('[data-act="resus-open"]')
+        page.click('[data-act="resus"][data-kind="start"]')
+        check('Weight is required' in page.inner_text('main'), 'paediatric resus: weight required before weight-based doses')
+        page.evaluate("window.__UFC.store.setFact('vitals.weight', 20, {origin:'measurement'})")
+        page.wait_for_timeout(300)
+        rt = page.inner_text('main')
+        check('0.2 mg' in rt and '100 mg' in rt and '40 J' in rt, 'paediatric epinephrine 0.2 mg, amiodarone 100 mg, first shock 40 J at 20 kg')
+        page.click('[data-act="resus-drug"][data-kind="epinephrine"]')
+        page.wait_for_timeout(1200)
+        check(page.inner_text('[data-timer="epi"]') not in ('', '--:--', '—'), 'epinephrine timer running')
+        check('RESUSCITATION' in page.evaluate("window.__UFC.copy('complete')") and 'Cardiac arrest — CPR started' in page.evaluate("window.__UFC.copy('complete')"), 'resuscitation events documented in the note')
 
         # ---- score library (calculator mode, nothing saved)
         page.click('[data-act="home"]'); page.click('[data-act="library"]')

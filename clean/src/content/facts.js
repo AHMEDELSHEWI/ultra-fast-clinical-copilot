@@ -34,6 +34,7 @@ export const FACTS = Object.freeze({
 
   // ---------- medications / social ----------
   'meds.hormone': yn('meds', 'Oestrogen / hormone use (contraceptive pill, HRT)?', 'استخدام هرمونات (حبوب منع حمل، علاج هرموني)؟', 'oestrogen-containing hormone therapy'),
+  'meds.beta_blocker': yn('meds', 'Taking a beta-blocker?', 'هل يتناول حاصرات بيتا؟', 'beta-blocker therapy'),
   'meds.aspirin_7d': yn('meds', 'Aspirin taken in the last 7 days?', 'هل تناول أسبرين خلال آخر 7 أيام؟', 'aspirin in the last 7 days'),
   'meds.antiplatelet_nsaid': yn('meds', 'Taking antiplatelets or NSAIDs?', 'هل يتناول مضادات صفائح أو مسكنات NSAIDs؟', 'antiplatelet or NSAID therapy'),
   'meds.labile_inr': yn('meds', 'On warfarin with unstable INR?', 'على الوارفارين مع INR غير مستقر؟', 'labile INR on warfarin'),

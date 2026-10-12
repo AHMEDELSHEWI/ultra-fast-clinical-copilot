@@ -293,7 +293,8 @@ function assessmentSection(store, pack) {
 }
 
 function eventLines(store, type, tz) {
-  return store.timeline().filter((e) => !type || e.type === type).map((e) => `${formatTime(e.at, tz)} ${e.text}`);
+  const types = Array.isArray(type) ? type : [type];
+  return store.timeline().filter((e) => !type || types.includes(e.type)).map((e) => `${formatTime(e.at, tz)} ${e.text}`);
 }
 
 function dispositionSection(store) {
@@ -327,7 +328,7 @@ function correctionsSection(store, tz) {
 export const SECTION_TITLES = Object.freeze({
   patient: 'PATIENT', cc: 'CHIEF COMPLAINT', hpi: 'HISTORY OF PRESENTING ILLNESS', history: 'RELEVANT HISTORY',
   vitals: 'VITAL SIGNS', exam: 'EXAMINATION', investigations: 'INVESTIGATIONS', results: 'RESULTS', scores: 'CLINICAL SCORES',
-  assessment: 'ASSESSMENT', treatment: 'TREATMENT GIVEN', reassessment: 'REASSESSMENT',
+  assessment: 'ASSESSMENT', resuscitation: 'RESUSCITATION', treatment: 'TREATMENT GIVEN', reassessment: 'REASSESSMENT',
   disposition: 'DISPOSITION', timeline: 'TIMELINE', corrections: 'DOCUMENTATION CORRECTIONS',
 });
 const CORE = new Set(['patient', 'cc', 'hpi', 'vitals', 'exam']);
@@ -345,7 +346,8 @@ export function buildSections(store, pack, { tz } = {}) {
     scores: scoresSection(store, pack),
     assessment: assessmentSection(store, pack),
     reassessment: eventLines(store, 'reassessment', tz),
-    treatment: eventLines(store, 'treatment', tz),
+    resuscitation: eventLines(store, 'resus', tz),
+    treatment: eventLines(store, ['treatment', 'medication'], tz),
     disposition: dispositionSection(store),
     timeline: eventLines(store, null, tz),
     corrections: correctionsSection(store, tz),

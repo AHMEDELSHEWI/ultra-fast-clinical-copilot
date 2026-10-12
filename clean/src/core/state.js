@@ -233,10 +233,11 @@ export class CaseStore {
   }
 
   // ---------- timeline ----------
-  addEvent({ type, text, at }) {
+  addEvent({ type, text, at, data }) {
     this._guardEditable();
     const when = at ?? this.clock();
     const ev = { id: newId('ev', when), type, text, at: when, recordedAt: this.clock(), corrections: [] };
+    if (data !== undefined) ev.data = clone(data);
     this.state.events.push(ev);
     this._audit('event+', ev.id, undefined, { type, text, at: when }, null);
     this._emit();

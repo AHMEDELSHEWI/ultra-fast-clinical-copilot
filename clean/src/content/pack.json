@@ -2056,6 +2056,71 @@
    "latestKnown": "Original publication.",
    "pmid": "1244564",
    "doi": "10.1159/000180580"
+  },
+  "aha2025_als": {
+   "citation": "Wigginton JG, et al. Part 9: Adult Advanced Life Support: 2025 American Heart Association Guidelines for CPR and ECC. Circulation 2025;152(16_suppl_2):S538-S577.",
+   "year": 2025,
+   "latestKnown": "Latest version verified in this build: 2025.",
+   "pmid": "41122884",
+   "doi": "10.1161/CIR.0000000000001376"
+  },
+  "aha2025_special": {
+   "citation": "Cao D, et al. Part 10: Adult and Pediatric Special Circumstances of Resuscitation: 2025 American Heart Association Guidelines for CPR and ECC. Circulation 2025;152(16_suppl_2):S578-S672.",
+   "year": 2025,
+   "latestKnown": "Latest version verified in this build: 2025.",
+   "pmid": "41122889",
+   "doi": "10.1161/CIR.0000000000001380"
+  },
+  "aha2025_postarrest": {
+   "citation": "Hirsch KG, et al. Part 11: Post-Cardiac Arrest Care: 2025 American Heart Association Guidelines for CPR and ECC. Circulation 2025;152(16_suppl_2):S673-S718.",
+   "year": 2025,
+   "latestKnown": "Latest version verified in this build: 2025.",
+   "pmid": "41122894",
+   "doi": "10.1161/CIR.0000000000001375"
+  },
+  "aha2025_alg_ca": {
+   "citation": "American Heart Association. Adult Cardiac Arrest Algorithm. 2025 Guidelines for CPR and ECC.",
+   "year": 2025,
+   "latestKnown": "Latest version verified in this build: 2025.",
+   "url": "https://cpr.heart.org/-/media/CPR-Files/CPR-Guidelines-Files/2025-Algorithms/Algorithm-ACLS-CA-250527.pdf"
+  },
+  "aha2025_alg_brady": {
+   "citation": "American Heart Association. Adult Bradycardia With a Pulse Algorithm. 2025 Guidelines for CPR and ECC.",
+   "year": 2025,
+   "latestKnown": "Latest version verified in this build: 2025.",
+   "url": "https://cpr.heart.org/-/media/CPR-Files/CPR-Guidelines-Files/2025-Algorithms/Algorithm-ACLS-Bradycardia-250514.pdf"
+  },
+  "aha2025_alg_tachy": {
+   "citation": "American Heart Association. Adult Tachyarrhythmia With a Pulse Algorithm. 2025 Guidelines for CPR and ECC.",
+   "year": 2025,
+   "latestKnown": "Latest version verified in this build: 2025.",
+   "url": "https://cpr.heart.org/-/media/CPR-Files/CPR-Guidelines-Files/2025-Algorithms/Algorithm-ACLS-Tachycardia-250514.pdf"
+  },
+  "aha2025_pals_ca": {
+   "citation": "American Heart Association. Pediatric Cardiac Arrest Algorithm. 2025 Guidelines for CPR and ECC.",
+   "year": 2025,
+   "latestKnown": "Latest version verified in this build: 2025.",
+   "url": "https://cpr.heart.org/-/media/CPR-Files/CPR-Guidelines-Files/2025-Algorithms/Algorithm-PALS-CA-250123.pdf"
+  },
+  "aha2025_pals_brady": {
+   "citation": "American Heart Association. Pediatric Bradycardia With a Pulse Algorithm. 2025 Guidelines for CPR and ECC.",
+   "year": 2025,
+   "latestKnown": "Latest version verified in this build: 2025.",
+   "url": "https://cpr.heart.org/-/media/CPR-Files/CPR-Guidelines-Files/2025-Algorithms/Algorithm-PALS-Bradycardia-250121.pdf"
+  },
+  "wao2020": {
+   "citation": "Cardona V, et al. World Allergy Organization anaphylaxis guidance 2020. World Allergy Organ J 2020;13(10):100472.",
+   "year": 2020,
+   "latestKnown": "Latest version verified in this build: 2020.",
+   "pmid": "33204386",
+   "doi": "10.1016/j.waojou.2020.100472"
+  },
+  "anaph2023": {
+   "citation": "Golden DBK, et al. Anaphylaxis: A 2023 practice parameter update. Ann Allergy Asthma Immunol 2024;132(2):124-176.",
+   "year": 2023,
+   "latestKnown": "Latest version verified in this build: 2023.",
+   "pmid": "38108678",
+   "doi": "10.1016/j.anai.2023.09.015"
   }
  },
  "reasoning": {
