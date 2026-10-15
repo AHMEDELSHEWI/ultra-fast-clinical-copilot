@@ -23,7 +23,7 @@ export function medContext(store) {
     child: isNum(age) ? age < 18 : null,
     pregnancy: g('preg.status'),
     allergyStatus: g('allergy.status'),
-    allergyText: String(g('allergy.status.detail') ?? '').toLowerCase(),
+    allergyText: [g('allergy.status.detail') ?? '', ...Object.values(store.state.facts).filter((f) => f.status === 'active' && f.key.startsWith('vx.allergy.')).map((f) => f.value.label)].join(' ').toLowerCase(),
     qtc: g('ecg.qtc_ms'),
     heartFailure: g('pmh.heart_failure'),
     lung: g('pmh.chronic_lung_disease'),
@@ -91,8 +91,8 @@ export function administered(store, drugId) {
 export function safetyChecks(drug, use, ctx, store) {
   const out = [];
   const add = (level, text) => out.push({ level, text });
-  if (ctx.allergyStatus === undefined) add('important', 'Allergy status not documented — ask before giving.');
-  if (ctx.allergyStatus === 'yes') {
+  if (ctx.allergyStatus === undefined && !ctx.allergyText) add('important', 'Allergy status not documented — ask before giving.');
+  if (ctx.allergyStatus === 'yes' || (ctx.allergyStatus === undefined && ctx.allergyText)) {
     const names = [drug.name, ...(drug.synonyms ?? [])].map((x) => x.toLowerCase().split(' (')[0]);
     if (names.some((n) => n && ctx.allergyText.includes(n))) add('critical', `Documented allergy matches ${drug.name}.`);
     else add('caution', `Drug allergy documented (${ctx.allergyText || 'details not recorded'}) — confirm it does not involve ${drug.name}.`);
@@ -118,9 +118,12 @@ export function safetyChecks(drug, use, ctx, store) {
 }
 
 /** Medications relevant to this case (context rules), each with its indication and reason. */
-export function suggestMeds(pack, store) {
+export function suggestMeds(pack, store, { extra = {}, ignoreDx = false } = {}) {
   if (store.activeComplaints().length === 0 && !Object.keys(store.snapshotValues()).some((k) => k.startsWith('dx.consider.'))) return [];
   const values = investigationValues(pack, store);
+  // ignoreDx: only objective triggers (vitals, ECG, scores). extra: planned (not yet approved) considerations.
+  if (ignoreDx) for (const k of Object.keys(values)) if (k.startsWith('dx.consider.')) delete values[k];
+  Object.assign(values, extra);
   const ctx = medContext(store);
   const out = [];
   const seen = new Set();

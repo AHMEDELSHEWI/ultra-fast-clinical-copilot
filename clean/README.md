@@ -78,3 +78,36 @@ tools/        build.mjs
 - **Documentation**: consultant summary, referral (clinician question only), discharge, bilingual patient instructions, ICD-10 (WHO) with clinician confirmation, MCCHIS (SOAP until the hospital template is supplied), final case screen with one-tap copies.
 - **Natural-language intake** (EN/AR, offline): free text parsed into a confirmation list; nothing saved until confirmed; the interview skips what was already entered.
 - 112 unit tests + end-to-end browser test. `npm run review` regenerates REVIEW.md (all clinical content needs consultant sign-off).
+
+
+## Offline vocabularies (2.2)
+
+About 200,000 searchable terms, all offline, embedded gzip-compressed in the single HTML file and decoded on first use:
+
+| Category in the app | Source | Count | Licence |
+|---|---|---|---|
+| Symptoms, signs | Human Phenotype Ontology, release 2026-09-01 | 19,177 | Free; content unaltered; acknowledged with version |
+| Past history, diagnoses | ICD-10-CM FY2026 (CDC/NCHS), billable codes | 74,719 | US public domain |
+| Imaging, monitoring, procedures | ICD-10-PCS FY2026 (CMS) | 79,115 | US public domain |
+| Drugs (ingredients + clinical drug products), classes, may-treat, contraindications | RxNorm normalized layer + RxClass (VA MED-RT, FDA SPL) | 20,912 | US government works |
+| Laboratory and bedside tests | Catalogue written for this app | 197 | — |
+| Examination | General + 9 local systems, 313 structured findings (this app) | 313 | — |
+
+Rebuild packs: `python3 -I tools/extract-vocab.py <medical-codes.db> <hp.json> data/vocab` then gzip each JSON (`gzip -9 -n`).
+The database comes from the npm package `@cyanheads/medical-codes-mcp-server` (built from the federal .gov releases), HPO from its GitHub release.
+No doses come from these sources: RxNorm entries are ordered with a clinician-entered dose. ICD-10-CM is the US clinical modification; local systems (WHO ICD-10, ICD-10-AM) can differ.
+
+## 2.3 — speed, lightness, design, scribe
+
+- **Light edition:** `index.html` ≈ 0.43 MB; vocabularies are separate files loaded on first use and precached for offline use. `ufc-offline-full.html` keeps everything in one file for sharing.
+- **Speed:** engine results cached per case change (`src/core/memo.js`); screen updates patch only changed DOM (morphdom); live note built only on wide screens.
+- **Design v3:** navy actions on a white workspace, clinical colours reserved for meaning, bedside-monitor vitals band, sentence-case headings.
+- **Scribe:** "Speak the case" starts dictation in one tap; the offline engine shows what it understood while you speak; one confirmation; then only missing questions.
+
+## 2.4 — easier entry, shorter screens
+
+- **Vital signs typed in place**: one grid on the Exam tab; Enter saves and moves to the next field. A changed value is a new reading (the earlier one stays in history); corrections still need a reason (pencil button).
+- **One-step intake**: what the app understood from the spoken/typed case is shown as chips; tap any wrong chip to remove it, then *Build the record*. A recognised complaint goes straight to the interview. The manual age/sex box folds away when the text already gives both.
+- **Examination**: findings in a compact two-column grid on phones; *All normal… / Rest normal…* per system lists the normal statement of every group not yet filled — the clinician unticks anything not examined, and only ticked items are recorded. Never offered for the genitourinary/obstetric system or the rectal examination.
+- GCS options fit on small screens; DEMO label always visible on phones; compact *Copy all* button; compact language switch on phones.
+- Updates: a new version installs in the background; it loads immediately on the home screen, otherwise the next time the app opens.

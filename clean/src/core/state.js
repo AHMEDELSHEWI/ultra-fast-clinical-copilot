@@ -54,6 +54,7 @@ export class CaseStore {
     return () => this.listeners.delete(fn);
   }
   _emit() {
+    this.rev = (this.rev ?? 0) + 1; // invalidates per-change caches (memo.js)
     this.state.updatedAt = this.clock();
     for (const fn of this.listeners) fn(this.state);
   }
@@ -88,9 +89,12 @@ export class CaseStore {
   }
   /** Plain map of current active values (what alerts, scores and notes may use). */
   snapshotValues() {
-    const out = {};
-    for (const [k, f] of Object.entries(this.state.facts)) if (f.status === 'active') out[k] = clone(f.value);
-    return out;
+    if (this._snapRev !== (this.rev ?? 0) || !this._snap) {
+      const out = {};
+      for (const [k, f] of Object.entries(this.state.facts)) if (f.status === 'active') out[k] = clone(f.value);
+      this._snap = out; this._snapRev = this.rev ?? 0;
+    }
+    return { ...this._snap }; // callers may add keys to their copy
   }
 
   // ---------- writing facts ----------

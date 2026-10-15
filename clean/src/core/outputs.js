@@ -49,10 +49,10 @@ export function consultantSummary(store, pack) {
     block('Investigations', [...(s.investigations ?? []), ...(s.results ?? [])]),
     block('Scores', scores),
     `Clinical synthesis\n${imp || nd}`,
-    `Most likely / working diagnosis\n${dx ? `${dx} (clinician-entered)` : nd}`,
+    `Most likely / working diagnosis\n${dx ? `${dx} (${store.getFactRecord('assessment.diagnosis')?.origin === 'ai_confirmed' ? 'auto-generated, approved by clinician' : 'clinician-entered'})` : nd}`,
     block('Must-not-miss diagnoses under consideration (clinician-confirmed)', considered(store).length ? [joinList(considered(store))] : []),
     block('Resuscitation', s.resuscitation),
-    block('Treatment', s.treatment),
+    block('Treatment', [...(s.orders ?? []), ...(s.treatment ?? [])]),
     block('Response', s.reassessment),
     block('Disposition', s.disposition),
     block('Outstanding issues', outstanding),
@@ -74,7 +74,7 @@ export function referralLetter(store, pack) {
     block('Important findings', keyFindings(store, pack)),
     block('Vital signs', s.vitals),
     block('Investigations', [...(s.investigations ?? []), ...(s.results ?? [])]),
-    block('Treatment', s.treatment),
+    block('Treatment', [...(s.orders ?? []), ...(s.treatment ?? [])]),
     block('Response', s.reassessment),
     `Specific question for the consultant\n${question || 'Not documented.'}`,
   ].filter(Boolean);
@@ -99,7 +99,7 @@ export function dischargeSummary(store, pack) {
     'DISCHARGE SUMMARY',
     block('Patient', [snapshot(store, pack)]),
     `Diagnosis\n${dx || nd}`,
-    block('Treatment in the emergency department', s.treatment),
+    block('Treatment in the emergency department', [...(s.orders ?? []), ...(s.treatment ?? [])]),
     block('Response', s.reassessment),
     `Discharge medications\n${meds || nd}`,
     `Follow-up\n${fu || nd}`,
@@ -135,7 +135,14 @@ export function icdSuggestions(store, pack) {
     const m = map.diagnoses[id];
     if (m && !out.some((x) => x.code === m[0])) out.push({ code: m[0], label: m[1], basis: `${f.value} — under consideration, not a confirmed diagnosis`, confidence: 'Requires confirmation', kind: 'diagnosis' });
   }
-  return out.map((x) => ({ ...x, confirmed: store.getFact(`icd.${x.code}`) === 'confirmed' }));
+  const res = out.map((x) => ({ ...x, confirmed: store.getFact(`icd.${x.code}`) === 'confirmed' }));
+  // Diagnoses the clinician picked from ICD-10-CM are confirmed by that selection.
+  for (const f of Object.values(store.state.facts)) {
+    if (f.status !== 'active' || !f.key.startsWith('vx.dx.')) continue;
+    if (res.some((x) => x.code === f.value.code)) continue;
+    res.push({ code: f.value.code, label: f.value.label, basis: 'Clinician-selected diagnosis (ICD-10-CM)', confidence: 'Clinician-selected', kind: 'diagnosis', confirmed: true, picked: true });
+  }
+  return res;
 }
 
 export function icdText(store, pack) {
@@ -152,7 +159,7 @@ export function mcchisNote(store, pack) {
   const S = [...(s.cc ?? []).map((l) => `CC: ${l}`), ...(s.hpi ?? []), ...(s.history ?? [])];
   const O = [...(s.vitals ?? []), ...(s.exam ?? []), ...(s.results ?? [])];
   const A = [...(s.assessment ?? []), ...scores];
-  const P = [...(s.investigations ?? []), ...(s.resuscitation ?? []), ...(s.treatment ?? []), ...(s.reassessment ?? []), ...(s.disposition ?? [])];
+  const P = [...(s.investigations ?? []), ...(s.orders ?? []), ...(s.resuscitation ?? []), ...(s.treatment ?? []), ...(s.reassessment ?? []), ...(s.disposition ?? [])];
   const fu = store.getFact('discharge.followup');
   if (fu) P.push(`Follow-up: ${fu}`);
   const parts = ['MCCHIS NOTE', `S:\n${S.length ? S.join('\n') : nd}`, `O:\n${O.length ? O.join('\n') : nd}`, `A:\n${A.length ? A.join('\n') : nd}`, `P:\n${P.length ? P.join('\n') : nd}`];

@@ -1,6 +1,6 @@
 {
   "name": "ultra-fast-clinical-copilot",
-  "version": "2.1.0-beta.1",
+  "version": "2.4.0-beta.1",
   "private": true,
   "type": "module",
   "description": "Clinical decision support and documentation (Phase 1 core). Clinician verification required.",
@@ -11,5 +11,9 @@
   },
   "devDependencies": {
     "esbuild": "^0.25.10"
+  },
+  "dependencies": {
+    "fflate": "^0.8.2",
+    "morphdom": "^2.7.4"
   }
 }

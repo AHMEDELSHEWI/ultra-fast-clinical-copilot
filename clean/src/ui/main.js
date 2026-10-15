@@ -19,8 +19,13 @@ import { DRUGS, DRUG_BY_ID, DRUG_REVIEW } from '../content/drugs.js';
 import { calcDose, medContext, safetyChecks, suggestMeds, administered } from '../core/meds.js';
 import { OUTPUTS, icdSuggestions, suggestedSpecialties } from '../core/outputs.js';
 import { parseIntake } from '../core/nlp.js';
+import { autoPlan, approvePlan, skipKey, orderMed } from '../core/autoplan.js';
+import { EXAM, EXAM_OPTION_BY_FACT } from '../content/exam.js';
+import { DICT_GROUPS, DICT_UNSUPPORTED, DICT_BY_CODE } from '../content/dictlangs.js';
+import { PACKS, decodePack, buildIndex, search as vxSearch, counts as vxCounts, addPick, picks, vxKey, PCS_SECTIONS } from '../core/vocab.js';
 import { icon, tile, COMPLAINT_ICON } from './icons.js';
 import { makeT } from './i18n.js';
+import morphdom from 'morphdom';
 
 // ================================================================ state & helpers
 const $ = (s, r = document) => r.querySelector(s);
@@ -41,7 +46,6 @@ let autosave = null;
 let unsub = null;
 
 const complaintByKey = (k) => pack.complaints.find((c) => c.key === k);
-const examFindings = pack.exam.flatMap((s) => s.findings);
 const isFinal = () => store?.state.status === 'final';
 const S = () => (ui.sheet?.scratch ? scratch : store); // store the current sheet acts on
 const cTile = (c, size = 'md') => { const [n, tone] = COMPLAINT_ICON[c?.icon] ?? ['stethoscope', 'blue']; return tile(n, tone, size); };
@@ -75,10 +79,10 @@ function ask({ title, body = '', fields = [], actions }) {
         if (!b) { if (e.target.matches('[data-modal-bg]')) { host.innerHTML = ''; resolve(null); } return; }
         const act = actions.find((a) => a.id === b.dataset.modalAct);
         const values = {};
-        host.querySelectorAll('input,textarea').forEach((i) => { values[i.name] = i.value.trim(); });
+        host.querySelectorAll('input,textarea').forEach((i) => { values[i.name] = i.type === 'checkbox' ? i.checked : i.value.trim(); });
         if (act.needs && act.needs.some((n) => !values[n])) {
           draw(t('reasonRequired'));
-          host.querySelectorAll('input,textarea').forEach((i) => { if (values[i.name] !== undefined) i.value = values[i.name]; });
+          host.querySelectorAll('input,textarea').forEach((i) => { if (values[i.name] === undefined) return; if (i.type === 'checkbox') i.checked = values[i.name]; else i.value = values[i.name]; });
           return;
         }
         host.innerHTML = '';
@@ -169,8 +173,8 @@ function questionHtml(key, { st = store, note = '' } = {}) {
   } else if (def.type === 'choice') {
     if (ui.pendingText?.key === key) {
       const o = def.options[ui.pendingText.i];
-      body = `<div class="field"><label for="ptext">${esc(L(o.textPrompt))}</label><input id="ptext" type="text" data-bind="ptext" value="${esc(ui.pendingText.text ?? '')}"></div>
-        <button class="btn primary block" data-act="answer-text" data-key="${esc(key)}">${esc(t('save'))}</button>`;
+      body = `<div class="field"><label for="ptext">${esc(L(o.textPrompt))}</label><input id="ptext" type="text" data-bind="ptext" data-enter="answer-text" data-key="${esc(key)}" value="${esc(ui.pendingText.text ?? '')}"></div>
+        <p class="tiny">${esc(ui.lang === 'ar' ? 'اضغط Enter أو انتقل من الحقل للحفظ والمتابعة تلقائياً.' : 'Press Enter or leave the field to save and move on.')}</p>`;
     } else {
       body = `<div class="answers">${def.options.map((o, i) => `<button class="opt ${cur === o.v ? 'on' : ''}" data-act="answer" data-key="${esc(key)}" data-i="${i}">${esc(L(o))}</button>`).join('')}</div>`;
     }
@@ -185,7 +189,7 @@ function questionHtml(key, { st = store, note = '' } = {}) {
   } else if (def.type === 'number') {
     body = `<div class="numrow"><input id="num-input" type="number" step="any" inputmode="decimal" value="${esc(cur ?? '')}" data-enter="answer-num" data-key="${esc(key)}" aria-label="${esc(L(def.prompt))}">
       <span class="unit">${esc(def.unit ?? '')}</span></div>
-      <button class="btn primary block" data-act="answer-num" data-key="${esc(key)}">${icon('check')}${esc(t('save'))}</button>`;
+      <p class="tiny">${esc(ui.lang === 'ar' ? 'اضغط Enter أو انتقل من الحقل للحفظ والمتابعة تلقائياً.' : 'Press Enter or leave the field to save and move on.')}</p>`;
   }
   const skip = st.isAnswered(key) ? '' : `<button class="btn ghost block" data-act="unknown-q" data-key="${esc(key)}">${esc(t('skipUnknown'))}</button>`;
   return `<div class="qwrap">${head}${body}${skip}</div>`;
@@ -207,12 +211,12 @@ const pillFor = (res) => {
 };
 
 function topBar() {
-  const inCase = store && ui.screen !== 'home' && ui.screen !== 'library';
+  const inCase = store && (ui.screen === 'case' || ui.screen === 'resus');
   const age = store?.getFact('patient.age');
   const sex = store?.getFact('patient.sex');
   const pt = inCase ? `<div class="pt">
       <button class="chip blue" data-act="edit-demo" data-kind="age" ${isFinal() ? 'disabled' : ''}>${icon('user')}${esc(typeof age === 'number' ? `${age} ${ui.lang === 'ar' ? 'سنة' : 'y'}` : t('age'))}</button>
-      <button class="chip blue" data-act="edit-demo" data-kind="sex" ${isFinal() ? 'disabled' : ''}>${esc(sex ? t(sex) : t('sex'))}</button>
+      <button class="chip blue" data-act="edit-demo" data-kind="sex" ${isFinal() ? 'disabled' : ''}>${esc(sex ? (ui.lang === 'ar' ? t(sex) : t(sex)[0]) : t('sex'))}</button>
       ${store.state.demo ? `<span class="badge demo">${t('demoBadge')}</span>` : ''}${isFinal() ? `<span class="badge final">${t('finalBadge')}</span>` : ''}</div>` : '';
   return `<header class="top"><div class="top-in">
     <button class="brand" data-act="home" aria-label="Home"><span class="mark">${icon('pulse')}</span>
@@ -220,7 +224,7 @@ function topBar() {
     <div class="grow">${pt}</div>
     <button class="iconbtn" data-act="resus-open" aria-label="Resuscitation" style="color:var(--red);border-color:var(--red-bd);background:var(--red-bg)">${icon('zap')}</button>
     <button class="iconbtn" data-act="open-search" aria-label="${esc(t('searchAll'))}">${icon('search')}</button>
-    <button class="langbtn" data-act="lang">${esc(t('language'))}</button></div></header>`;
+    <button class="langbtn" data-act="lang" aria-label="${esc(t('language'))}"><span class="ll">${esc(t('language'))}</span><span class="ls">${ui.lang === 'ar' ? 'EN' : 'ع'}</span></button></div></header>`;
 }
 
 function vitalStatus(k, v, age) {
@@ -246,8 +250,8 @@ function patientStrip() {
   const alerts = deriveAlerts(v).filter((a) => a.level === 'danger' || a.level === 'warn');
   const complaints = store.activeComplaints().map((k) => complaintByKey(k)).filter(Boolean);
   return `<div class="strip"><div class="strip-in">
-    ${complaints.map((c) => `<span class="chip">${esc(L(c.label))}</span>`).join('')}
-    ${chips.map(([l, val, cls]) => `<span class="vchip ${cls}">${esc(l)} <b>${esc(val)}</b></span>`).join('')}
+    ${complaints.map((c) => `<span class="cc">${esc(L(c.label))}</span>`).join('')}
+    ${chips.length ? `<button class="mon" data-act="tab" data-tab="exam" aria-label="${esc(t('vitalsT'))}">${chips.map(([l, val, cls]) => `<span class="mcell ${cls}"><span class="ml">${esc(l)}</span><span class="mv">${esc(val)}</span></span>`).join('')}</button>` : ''}
     ${alerts.length ? `<button class="vchip bad btnchip" data-act="tab" data-tab="now">${icon('alert', { size: 14 })}<b>${alerts.length}</b></button>` : ''}
     ${!chips.length ? `<button class="vchip btnchip" data-act="tab" data-tab="exam">${icon('activity', { size: 14 })} ${esc(t('vitalsT'))}</button>` : ''}
   </div></div>`;
@@ -261,7 +265,9 @@ function navHtml() {
     `<button class="${ui.tab === k ? 'on' : ''}" data-act="tab" data-tab="${k}" aria-current="${ui.tab === k}">${icon(ic)}<span>${esc(t(lk))}</span>${k === 'now' && danger ? `<span class="dot">${danger}</span>` : ''}</button>`).join('')}</div></nav>`;
 }
 
+const wide = () => typeof window !== 'undefined' && window.matchMedia?.('(min-width: 1100px)').matches;
 function sidePanel() {
+  if (!wide()) return ''; // the live note panel is only shown on wide screens; don't build it on phones
   const text = renderCompleteCase(store, pack);
   return `<aside class="side" aria-label="${esc(t('liveNote'))}"><div class="spread"><h3>${esc(t('liveNote'))}</h3>
     <button class="btn small" data-act="copy" data-target="complete">${icon('copy')}${esc(t('copy'))}</button></div>
@@ -277,10 +283,13 @@ function homeView() {
       <button class="btn small primary" data-act="open-case" data-id="${esc(c.id)}">${esc(t('open'))}</button>
       <button class="iconbtn" data-act="delete-case" data-id="${esc(c.id)}" aria-label="${esc(t('delete'))}">${icon('trash')}</button></div>`).join('');
   return `<main><div class="content stack">
-    <section class="hero"><h1>${esc(t('app'))}</h1><p>${esc(t('tagline'))}</p>
-      <div class="actions"><button class="btn primary" data-act="new-case">${icon('plus')}${esc(t('newPatient'))}</button>
+    <section class="hero2">
+      <h1>${esc(t('app'))}</h1><p class="lede">${esc(t('tagline'))}</p>
+      <button class="speak" data-act="scribe"><span class="speak-mic">${icon('mic')}</span><span><b>${esc(ui.lang === 'ar' ? 'تحدّث بالحالة' : 'Speak the case')}</b>
+        <small>${esc(ui.lang === 'ar' ? 'قل العمر والجنس والشكوى والتاريخ — يُبنى الملف أثناء كلامك' : 'Say age, sex, complaint and history — the record builds while you talk')}</small></span></button>
+      <div class="actions"><button class="btn" data-act="new-case">${icon('plus')}${esc(ui.lang === 'ar' ? 'مريض جديد بالكتابة' : 'New patient by typing')}</button>
       ${ui.lastId ? `<button class="btn" data-act="open-case" data-id="${esc(ui.lastId)}">${icon('refresh')}${esc(t('openLast'))}</button>` : ''}
-      <button class="btn" data-act="demo">${icon('bulb')}${esc(t('demoCase'))}</button></div></section>
+      <button class="btn ghost" data-act="demo">${icon('bulb')}${esc(t('demoCase'))}</button></div></section>
     <div class="notice">${icon('lock')}<span>${esc(t('privacy'))}</span></div>
     <div class="section-title"><h3>${esc(t('tools'))}</h3></div>
     <div class="tools">
@@ -290,37 +299,55 @@ function homeView() {
       <button class="tool" data-act="restore-backup">${tile('upload', 'slate')}${esc(t('restoreBackup'))}</button></div>
     <input type="file" id="backup-file" accept="application/json,.json" hidden>
     ${ui.cases.length ? `<div class="section-title"><h3>${esc(t('savedCases'))}</h3></div><div>${list}</div>` : ''}
-    <p class="tiny">${esc(t('draftNote'))} · v${esc(APP_VERSION)} · ${esc(t('offline'))}</p></div></main>`;
+    <p class="tiny">${esc(t('draftNote'))} · v${esc(APP_VERSION)} · ${esc(t('offline'))}</p>
+    <p class="tiny">Offline vocabularies: Human Phenotype Ontology (version 2026-09-01, hpo.jax.org) · ICD-10-CM FY2026 (CDC/NCHS) · ICD-10-PCS FY2026 (CMS) · RxNorm and RxClass (NLM, VA MED-RT, FDA). This product uses the Human Phenotype Ontology.</p></div></main>`;
 }
 
+/** What the offline engine has understood from the text so far (updates while you speak or type). */
+function parsePreviewHtml(text) {
+  const ar = ui.lang === 'ar';
+  if (!text.trim()) return `<p class="muted">${esc(ar ? 'سيظهر هنا ما فهمه البرنامج من كلامك.' : 'What the app understands from your words appears here.')}</p>`;
+  const p = parseIntake(text, pack);
+  const off = ui.intake?.off ?? {};
+  const items = [];
+  if (typeof p.age === 'number') items.push(['age', t('age'), `${p.age}`]);
+  if (p.sex) items.push(['sex', t('sex'), t(p.sex)]);
+  for (const c of p.complaints) items.push([`c:${c}`, ar ? 'شكوى' : 'Complaint', L(complaintByKey(c)?.label) || c]);
+  for (const [k, v] of Object.entries(p.facts)) items.push([`f:${k}`, detLabel(k), detVal(k, v)]);
+  if (!items.length) return `<p class="muted">${esc(ar ? 'لم يُفهم شيء بعد — تابع الكلام.' : 'Nothing recognised yet — keep going.')}</p>`;
+  // Each item is a toggle: the clinician removes anything wrong; "Build the record" saves only the ticked items.
+  return `<div class="understood">${items.map(([key, k, v]) => `<button type="button" class="u ${off[key] ? 'off' : ''}" data-act="u-toggle" data-k="${esc(key)}" aria-pressed="${!off[key]}"><small>${esc(k)}</small><b>${esc(v)}</b>${icon(off[key] ? 'plus' : 'x', { size: 14 })}</button>`).join('')}</div>
+    <p class="tiny" style="margin-top:6px">${esc(ar ? 'اضغط على أي عنصر خاطئ لحذفه — يُحفظ الباقي عند «ابنِ الملف».' : 'Tap anything wrong to remove it — the rest is saved when you build the record.')}</p>`;
+}
+
+/** Manual age/sex box: open until the spoken/typed text already gives both (then it folds away). */
+function demoHandOpen() {
+  if (ui.intake.needDemo || ui.intake.age || ui.intake.sex) return true;
+  const txt = ui.intake.text.trim();
+  if (!txt) return !ui.intake.viaScribe;
+  const p = parseIntake(txt, pack);
+  return !(typeof p.age === 'number' && p.sex);
+}
 function intakeView() {
-  const speech = typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window);
+  const ar = ui.lang === 'ar'; const live = dict.target === 'text';
   return `<main><div class="content stack"><h2>${esc(t('newPatient'))}</h2>
-    <div class="notice">${icon('lock')}<span>${esc(t('privacy'))}</span></div>
-    <div class="card stack">
-      <div class="field"><label for="age">${esc(t('age'))}</label>
+    <div class="card stack scribe">
+      <button class="bigmic ${live ? 'live' : ''}" data-act="dictate" data-target="text" aria-pressed="${live}">${icon('mic')}<span>${esc(live ? (ar ? 'إيقاف' : 'Stop') : (ar ? 'اضغط وتحدّث' : 'Tap and speak'))}</span></button>
+      <div class="field"><label for="text">${esc(ar ? 'الحالة بكلماتك' : 'The case in your words')}</label>
+        <textarea id="text" data-bind="text" rows="4" placeholder="${esc(ar ? 'مثال: رجل 55 سنة، سكري، ألم صدر ضاغط منذ 30 دقيقة مع تعرق' : '55-year-old man, diabetic, crushing central chest pain for 30 minutes, sweating')}">${esc(ui.intake.text)}</textarea></div>
+      <div><div class="muted" style="margin-bottom:6px">${esc(ar ? 'ما فهمه البرنامج' : 'Understood so far')}</div><div id="live-parse">${parsePreviewHtml(ui.intake.text)}</div></div>
+    </div>
+    <details class="card flat tight" id="demo-hand" ${demoHandOpen() ? 'open' : ''}><summary><b>${esc(ar ? 'العمر والجنس يدوياً (إن لم يُذكرا)' : 'Age and sex by hand (if not said)')}</b></summary>
+      <div class="stack" style="margin-top:10px"><div class="field"><label for="age">${esc(t('age'))}</label>
         <input id="age" type="number" step="any" min="0" max="120" inputmode="decimal" data-bind="age" value="${esc(ui.intake.age)}"></div>
       <div class="field"><label>${esc(t('sex'))}</label><div class="seg">
-        ${['male', 'female', 'unknown'].map((s) => `<button class="${ui.intake.sex === s ? 'on' : ''}" data-act="sex" data-v="${s}">${esc(t(s))}</button>`).join('')}</div></div>
-      <div class="field"><label for="text">${esc(t('inYourWords'))}</label>
-        <textarea id="text" data-bind="text" placeholder="55-year-old male, diabetic, crushing central chest pain for 30 minutes, sweating">${esc(ui.intake.text)}</textarea>
-        ${speech ? `<button class="btn small" data-act="dictate">${icon('mic')}${esc(t('dictate'))}</button>` : ''}</div>
-    </div>
-    <button class="btn primary block" data-act="intake-submit">${esc(t('continue'))}</button></div></main>`;
+        ${['male', 'female', 'unknown'].map((x) => `<button class="${ui.intake.sex === x ? 'on' : ''}" data-act="sex" data-v="${x}">${esc(t(x))}</button>`).join('')}</div></div></div></details>
+    <div class="notice">${icon('lock')}<span>${esc(t('privacy'))}</span></div>
+    <button class="btn primary block big" data-act="intake-submit">${esc(ar ? 'ابنِ الملف' : 'Build the record')}${icon('chevron')}</button></div></main>`;
 }
 
-function detectedView() {
-  const d = ui.detected;
-  const label = (k) => { const sp = specFor(k); const def = sp.question ?? sp.def; return def ? L(def.prompt).replace(/\?$/, '') : k === 'allergy.status.detail' ? (ui.lang === 'ar' ? 'تفاصيل الحساسية' : 'Allergy details') : k; };
-  const val = (k, v) => (k === 'allergy.status.detail' ? String(v) : displayValue(k, v));
-  return `<main><div class="content stack"><h2>${esc(ui.lang === 'ar' ? 'ما تم استخراجه من النص' : 'Detected from your text')}</h2>
-    <div class="notice">${icon('shield')}<span>${esc(ui.lang === 'ar' ? 'استخراج محلي دون إنترنت. لا يُحفظ شيء قبل تأكيدك — ألغِ أي عنصر غير صحيح.' : 'Offline extraction. Nothing is saved until you confirm — untick anything that is wrong.')}</span></div>
-    ${d.complaints.length ? `<h3>${esc(t('chooseComplaint'))}</h3><div class="cgrid">${d.complaints.map((c, i) => { const cc = complaintByKey(c.key); return `<button class="copt ${c.on ? 'on' : ''}" data-act="det-toggle" data-kind="c" data-i="${i}">${cTile(cc)}<span>${esc(L(cc.label))}</span>${c.on ? `<span class="tick">${icon('check')}</span>` : ''}</button>`; }).join('')}</div>` : ''}
-    ${d.facts.length ? `<h3>${esc(ui.lang === 'ar' ? 'معلومات' : 'Findings')}</h3>${d.facts.map((f, i) => `<button class="scorecard" data-act="det-toggle" data-kind="f" data-i="${i}">${tile(f.on ? 'check' : 'x', f.on ? 'green' : 'slate', 'sm')}<span class="body"><span class="title">${esc(label(f.key))}</span></span><b>${esc(val(f.key, f.value))}</b></button>`).join('')}` : ''}
-    <button class="btn primary block" data-act="det-apply">${icon('check')}${esc(ui.lang === 'ar' ? 'تأكيد ومتابعة' : 'Confirm and continue')}</button>
-    <button class="btn ghost block" data-act="det-skip">${esc(ui.lang === 'ar' ? 'تخطي' : 'Skip')}</button></div></main>`;
-}
-
+function detLabel(k) { const sp = specFor(k); const def = sp.question ?? sp.def; return def ? L(def.prompt).replace(/\?$/, '') : k === 'allergy.status.detail' ? (ui.lang === 'ar' ? 'تفاصيل الحساسية' : 'Allergy details') : k; }
+function detVal(k, v) { return k === 'allergy.status.detail' ? String(v) : displayValue(k, v); }
 function complaintListHtml() {
   const q = ui.search.trim().toLowerCase();
   const items = pack.complaints.filter((c) => !q || c.label.en.toLowerCase().includes(q) || c.label.ar.includes(q) || c.synonyms.some((s) => s.toLowerCase().includes(q)));
@@ -337,6 +364,56 @@ function complaintsView() {
     <button class="btn primary block" data-act="start-interview" ${n ? '' : 'disabled'}>${esc(t('startInterview'))}${n ? ` (${n})` : ''}</button></div></main>`;
 }
 
+// ---------------------------------------------------------------- AUTO PLAN (investigations, diagnosis, treatment, doses)
+function planStatus(x, kind, id) {
+  if (isFinal()) return x.done ? `<span class="pill ok">${icon('check')}${esc(t('planDone'))}</span>` : '';
+  if (x.done) return `<span class="pill ok">${icon('check')}${esc(t('planDone'))}</span>`;
+  if (x.skipped) return `<button class="btn small ghost" data-act="plan-skip" data-kind="${kind}" data-id="${esc(id)}">${esc(t('planRestore'))}</button>`;
+  return `<button class="iconbtn sm" data-act="plan-skip" data-kind="${kind}" data-id="${esc(id)}" aria-label="${esc(t('planDecline'))}" title="${esc(t('planDecline'))}">${icon('x')}</button>`;
+}
+
+function autoPlanCard() {
+  const p = autoPlan(pack, store);
+  if (!p.ready) return '';
+  const ro = isFinal();
+  const inv = p.investigations.map((x) => {
+    const [kic, ktone] = KIND_ICON[x.kind] ?? KIND_ICON.lab;
+    return `<div class="item ${x.done ? 'req' : ''} ${x.skipped ? 'skip' : ''}">${tile(kic, ktone, 'sm')}<div class="body"><div class="title">${esc(L(x.label))} <span class="pill ${x.tier === 'now' ? 'danger' : 'warn'}">${esc(t(x.tier === 'now' ? 'tierNow' : 'tierSoon'))}</span></div><div class="sub">${esc(x.why)}</div></div><div class="acts">${planStatus(x, 'inv', x.id)}</div></div>`;
+  }).join('');
+  const dx = p.differential.map((d) => {
+    const lead = d.leading && !d.skipped;
+    const act = !ro && !d.skipped && !lead ? `<button class="linkbtn tiny" data-act="plan-lead" data-id="${esc(d.id)}">${icon('star', { size: 14 })} ${esc(t('planMakeLead'))}</button>` : '';
+    return `<div class="item ${d.done ? 'req' : ''} ${d.skipped ? 'skip' : ''}">${tile(lead ? 'star' : 'alert', lead ? 'purple' : 'orange', 'sm')}<div class="body"><div class="title">${esc(L(d.dx))}${lead ? ` <span class="pill info">${esc(t('planLeading'))}</span>` : ''}</div><div class="sub">${esc(d.why)}</div>${act}</div><div class="acts">${planStatus(d, 'dx', d.id)}</div></div>`;
+  }).join('');
+  const meds = p.meds.map((m) => {
+    const doseLine = m.dose.ok ? m.dose.text : m.dose.unverified ? t('planProtocol') : m.dose.reason;
+    const calc = m.dose.calc ? `<div class="tiny">${esc(m.dose.calc)}</div>` : '';
+    const crit = m.flags.filter((f) => f.level === 'critical' || f.level === 'important').map(flagHtml).join('');
+    const tag = m.auto ? '' : m.blocked ? `<span class="pill danger">${esc(t('critical'))}</span>`
+      : m.dependsOn ? `<span class="pill caution">${esc(t('planIf'))} ${esc(L(m.dependsOn))}</span>`
+      : !m.firstLine ? `<span class="pill muted">${esc(t('planAlt'))}</span>` : '';
+    const needW = (m.dose.needs ?? []).includes('vitals.weight') && !ro ? `<button class="btn small primary" data-act="vital" data-k="weight">${icon('user')}${esc(t('weight'))}</button>` : '';
+    const needA = (m.dose.needs ?? []).includes('patient.age') && !ro ? `<button class="btn small primary" data-act="edit-demo" data-kind="age">${esc(t('age'))}</button>` : '';
+    const single = !ro && !m.auto && !m.done && !m.blocked && (m.dose.ok || m.dose.unverified) ? `<button class="btn small" data-act="plan-order" data-key="${esc(m.key)}">${esc(t('planOrder'))}</button>` : '';
+    return `<div class="item ${m.done ? 'req' : ''} ${m.skipped ? 'skip' : ''}">${tile(m.drug.icon[0], m.drug.icon[1], 'sm')}<div class="body"><div class="title">${esc(m.drug.name)} — ${esc(m.use.label)} ${tag}</div>
+      <div class="sub"><b>${esc(doseLine)}</b></div>${calc}${m.cond ? `<div class="tiny">${esc(m.cond)}</div>` : ''}${crit}
+      <button class="linkbtn tiny" data-act="open-drug" data-id="${m.drug.id}" data-use="${m.use.id}">${esc(t('medDetails'))}</button></div>
+      <div class="acts">${needW}${needA}${single}${m.auto || m.done ? planStatus(m, 'med', m.key) : ''}</div></div>`;
+  }).join('');
+  const sec = (ic, tone, title, body) => (body ? `<div class="section-title">${tile(ic, tone, 'sm')}<h3>${esc(title)}</h3></div>${body}` : '');
+  const approve = ro ? '' : p.pending
+    ? `<button class="btn green block big" data-act="plan-approve">${icon('check')}${esc(t('planApprove'))} (${p.pending})</button>`
+    : `<div class="alert ok">${icon('check')}<span class="t">${esc(t('planAllDone'))}</span></div>`;
+  return `<div class="card plan"><div class="card-h">${tile('bulb', 'purple')}<h4>${esc(t('planTitle'))}</h4><span class="badge ai">${esc(t('aiLabel'))}</span></div>
+    <p class="tiny">${esc(t('planIntro'))}</p>
+    ${approve}
+    ${sec('flask', 'red', t('planInv'), inv)}
+    ${sec('star', 'purple', t('planDx'), dx)}
+    ${sec('syringe', 'purple', t('planTx'), meds || `<p class="muted">${esc(t('planNoTx'))}</p>`)}
+    ${p.pending && !ro ? `<div style="margin-top:14px">${approve}</div>` : ''}
+    <p class="tiny">${esc(DRUG_REVIEW)}</p></div>`;
+}
+
 // ---------------------------------------------------------------- case: NOW dashboard
 function nextInterviewKey() {
   if (ui.editKey) return { key: ui.editKey };
@@ -346,30 +423,43 @@ function nextInterviewKey() {
   return pend ? { key: pend.key, forScore: pend.forScore } : null;
 }
 
+/** Advance straight to the next step once the history is complete (no extra tap). */
+function advanceInterview() {
+  if (ui.tab !== 'history' && ui.tab !== 'now') return;
+  if (isFinal() || !store.activeComplaints().length || nextInterviewKey()) return;
+  // Vitals not yet recorded → examination is the next step; otherwise the auto plan (Now) is.
+  const v = store.snapshotValues();
+  const hasVitals = typeof v['vitals.hr'] === 'number' || typeof v['vitals.sbp'] === 'number';
+  if (hasVitals) { ui.tab = 'now'; toast(t('interviewDone')); return; }
+  ui.tab = 'exam';
+  toast(t('interviewDone'));
+}
+
+/** One question on the page, with progress and any danger alert. Shared by the Now and History tabs. */
+function interviewCard(nxt, extra = '') {
+  const p = progress(pack, store);
+  const note = nxt.forScore ? `${esc(t('alsoNeeded'))} ${esc(SCORE_BY_ID[nxt.forScore]?.name)}` : '';
+  const danger = deriveAlerts(store.snapshotValues()).filter((a) => a.level === 'danger');
+  return `<div class="stack">${danger.map(alertHtml).join('')}
+    <div class="spread"><span class="tiny">${p.done} / ${p.total}</span><button class="btn small ghost" data-act="goto-complaints">${icon('plus')}${esc(t('addComplaint'))}</button></div>
+    <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${p.total}" aria-valuenow="${p.done}"><i style="width:${p.total ? Math.round((p.done / p.total) * 100) : 0}%"></i></div>
+    <div class="card">${questionHtml(nxt.key, { note })}</div>
+    ${ui.editKey ? `<button class="btn block" data-act="cancel-edit">${esc(t('cancel'))}</button>` : ''}${extra}</div>`;
+}
+
 function nowView() {
+  const nxt = isFinal() ? null : nextInterviewKey();
+  if (nxt) return interviewCard(nxt);
   const v = store.snapshotValues();
   const alerts = deriveAlerts(v);
-  const nxt = isFinal() ? null : nextInterviewKey();
-  const inv = suggestInvestigations(pack, store).filter((x) => x.tier === 'now' && !x.status).slice(0, 4);
   const scores = relevantScores(pack, store);
-  const r = reason(pack, store);
   const missing = missingInformation(pack, store).slice(0, 4);
-  const nxtDef = nxt ? specFor(nxt.key) : null;
-  const nxtPrompt = nxtDef ? L((nxtDef.question ?? nxtDef.def)?.prompt) : '';
   return `<div class="stack">
     <div><h2>${esc(t('whatMatters'))}</h2><span class="badge ai" style="margin-top:6px">${esc(t('aiLabel'))}</span></div>
     ${alerts.length ? alerts.map(alertHtml).join('') : `<div class="alert ok">${icon('check')}<span class="t">${esc(t('noAlerts'))}</span></div>`}
-    <div class="card"><div class="card-h">${tile('clipboard', 'blue')}<h4>${esc(t('nextStep'))}</h4></div>
-      ${nxt ? `<p style="font-weight:700;font-size:1.05rem">${esc(nxtPrompt)}</p>${nxt.forScore ? `<p class="tiny">${esc(t('alsoNeeded'))} ${esc(SCORE_BY_ID[nxt.forScore]?.name)}</p>` : ''}
-        <button class="btn primary block" style="margin-top:12px" data-act="tab" data-tab="history">${esc(t('continueHistory'))}${icon('chevron')}</button>`
-        : `<div class="row"><span class="pill ok">${icon('check')}${esc(t('historyDone'))}</span><button class="btn small" data-act="tab" data-tab="exam">${esc(t('tabExam'))}</button><button class="btn small" data-act="tab" data-tab="workup">${esc(t('tabWorkup'))}</button></div>`}</div>
-    ${inv.length ? `<div class="card"><div class="card-h">${tile('flask', 'red')}<h4>${esc(t('tierNow'))}</h4><button class="btn small ghost" data-act="tab" data-tab="workup">${esc(t('seeAll'))}</button></div>
-      ${inv.map((x) => `<div class="spread" style="padding:6px 0"><div class="grow"><b>${esc(L(x.label))}</b><div class="tiny">${esc(x.reasons[0].why)}</div></div>
-        ${isFinal() ? '' : `<button class="btn small" data-act="inv-request" data-id="${esc(x.id)}">${esc(t('request'))}</button>`}</div>`).join('')}</div>` : ''}
+    ${store.activeComplaints().length ? autoPlanCard() : `<button class="btn primary block" data-act="goto-complaints">${esc(t('chooseComplaint'))}</button>`}
     ${scores.length ? `<div class="card"><div class="card-h">${tile('calc', 'teal')}<h4>${esc(t('relevantScores'))}</h4></div>
       <div>${scores.map((s) => `<button class="mini" data-act="open-score" data-id="${s.id}"><span class="grow">${esc(SCORE_BY_ID[s.id].name)}</span>${pillFor(s.result)}</button>`).join('')}</div></div>` : ''}
-    ${r.mustNotMiss.length ? `<div class="card"><div class="card-h">${tile('alert', 'orange')}<h4>${esc(t('mustNotMissShort'))}</h4><button class="btn small ghost" data-act="tab" data-tab="think">${esc(t('seeAll'))}</button></div>
-      <div class="row">${r.mustNotMiss.slice(0, 6).map((d) => `<span class="chip ${store.getFact(considerKey(d.id)) ? 'green' : 'orange'}">${esc(L(d.dx))}</span>`).join('')}</div></div>` : ''}
     ${missing.length ? `<div class="card"><div class="card-h">${tile('info', 'yellow')}<h4>${esc(t('missing'))}</h4></div>
       ${missing.map((m) => `<div class="spread" style="padding:6px 0"><div class="grow"><b>${esc(m.status)}: ${esc(m.label)}</b><div class="tiny">${esc(m.why)}</div></div>
         ${isFinal() ? '' : `<button class="btn small" data-act="ask-now" data-ask="${esc(m.ask)}" data-key="${esc(m.key)}">${esc(t('askNow'))}</button>`}</div>`).join('')}</div>` : ''}
@@ -380,10 +470,7 @@ function nowView() {
 function historyView() {
   if (isFinal()) return `<div class="alert ok">${icon('check')}<span class="t">${esc(t('caseComplete'))}</span></div>`;
   if (!store.activeComplaints().length) return `<div class="stack"><h2>${esc(t('chooseComplaint'))}</h2><button class="btn primary block" data-act="goto-complaints">${esc(t('chooseComplaint'))}</button></div>`;
-  const p = progress(pack, store);
   const nxt = nextInterviewKey();
-  const bar = `<div class="spread"><span class="tiny">${p.done} / ${p.total}</span><button class="btn small ghost" data-act="goto-complaints">${icon('plus')}${esc(t('addComplaint'))}</button></div>
-    <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${p.total}" aria-valuenow="${p.done}"><i style="width:${p.total ? Math.round((p.done / p.total) * 100) : 0}%"></i></div>`;
   const answered = applicableQuestions(pack, store).filter(({ q }) => store.getFact(q.fact) !== undefined);
   const extra = Object.keys(FACTS).filter((k) => ['pmh', 'meds', 'social', 'family', 'sx'].includes(FACTS[k].section) && store.getFact(k) !== undefined && !answered.some(({ q }) => q.fact === k));
   const rows = [...answered.map(({ q }) => q.fact), ...extra];
@@ -392,36 +479,194 @@ function historyView() {
     return `<div class="kv"><span>${esc(L(def?.prompt))}</span><span class="row"><b>${esc(displayValue(k, store.getFact(k)))}</b><button class="btn small" data-act="edit-q" data-key="${esc(k)}">${esc(t('change'))}</button></span></div>`;
   }).join('')}</details>` : '';
   if (!nxt) {
-    return `<div class="stack">${bar}<div class="alert ok">${icon('check')}<span class="t">${esc(t('interviewDone'))}</span></div>
-      <div class="row"><button class="btn" data-act="tab" data-tab="exam">${icon('stethoscope')}${esc(t('tabExam'))}</button><button class="btn" data-act="tab" data-tab="workup">${icon('flask')}${esc(t('tabWorkup'))}</button></div>${answeredList}</div>`;
+    return `<div class="stack"><div class="alert ok">${icon('check')}<span class="t">${esc(t('interviewDone'))}</span></div>
+      <div class="row"><button class="btn" data-act="tab" data-tab="exam">${icon('stethoscope')}${esc(t('tabExam'))}</button><button class="btn" data-act="tab" data-tab="workup">${icon('flask')}${esc(t('tabWorkup'))}</button></div>${historyAdds()}${answeredList}</div>`;
   }
-  const note = nxt.forScore ? `${esc(t('alsoNeeded'))} ${esc(SCORE_BY_ID[nxt.forScore]?.name)}` : '';
-  return `<div class="stack">${bar}<div class="card">${questionHtml(nxt.key, { note })}</div>
-    ${ui.editKey ? `<button class="btn block" data-act="cancel-edit">${esc(t('cancel'))}</button>` : ''}${answeredList}</div>`;
+  return interviewCard(nxt, `${answeredList}${historyAdds(true)}`);
+}
+
+/** Add anything to the history from the full vocabularies (symptoms, past history, medications, allergies). */
+function historyAdds(collapsed = false) {
+  const body = `${vxBlock('symptom')}${vxBlock('pmh')}${vxBlock('med')}${vxBlock('allergy')}`;
+  const n = ['symptom', 'pmh', 'med', 'allergy'].reduce((a, k) => a + picks(store, k).length, 0);
+  const title = ui.lang === 'ar' ? 'إضافة للقصة المرضية (عشرات الآلاف من المصطلحات)' : 'Add to the history (tens of thousands of terms)';
+  return collapsed ? `<details class="card flat tight" data-keep="histadd" ${ui.openKeep?.histadd ? 'open' : ''}><summary><b>${esc(title)}</b>${n ? ` <span class="pill ok">${n}</span>` : ''}</summary>${body}</details>`
+    : `<div class="section-title">${tile('clipboard', 'blue', 'sm')}<h3>${esc(title)}</h3></div>${body}`;
 }
 
 // ---------------------------------------------------------------- case: EXAM (vitals, GCS, findings)
 const VT = [['bp', 'heart', 'red'], ['hr', 'pulse', 'pink'], ['rr', 'lungs', 'teal'], ['spo2', 'droplet', 'blue'], ['temp', 'thermometer', 'orange'], ['glucose', 'droplet', 'purple'], ['weight', 'user', 'slate'], ['height', 'user', 'slate']];
-function vitalTile([k, ic]) {
-  const v = store.snapshotValues();
-  const age = v['patient.age'];
-  let val; let status = ''; let trend = '';
-  if (k === 'bp') {
-    const s = v['vitals.sbp']; const d = v['vitals.dbp'];
-    if (typeof s === 'number' && typeof d === 'number') { val = `${s}/${d}<small>mmHg</small>`; status = vitalStatus('sbp', s, age); }
-    const prev = readingsOf(store, 'vitals.sbp').slice(0, -1);
-    const corr = (store.getFactRecord('vitals.sbp')?.history ?? []).filter((h) => h.status === 'corrected').length;
-    if (prev.length) trend = `${t('earlier')}: ${prev.slice(-2).join(', ')}`;
-    if (corr) trend += `${trend ? ' · ' : ''}${corr} ${ui.lang === 'ar' ? 'تصحيح' : 'corrected'}`;
-  } else {
+/** Vital signs typed in place: one grid, no sheet per number. Enter moves to the next field; leaving a field saves it. */
+const VIN = [['hr', 'pulse', 'pink'], ['rr', 'lungs', 'teal'], ['spo2', 'droplet', 'blue'], ['temp', 'thermometer', 'orange'], ['glucose', 'droplet', 'purple'], ['weight', 'user', 'slate'], ['height', 'user', 'slate']];
+function vitalsEntryHtml(v) {
+  const age = v['patient.age']; const ro = isFinal();
+  const sbp = v['vitals.sbp']; const dbp = v['vitals.dbp'];
+  const fix = (x) => (typeof x === 'number' ? String(x) : '');
+  const fixBtn = (k, has) => (has && !ro ? `<button class="iconbtn sm vin-fix" data-act="vital" data-k="${k}" aria-label="${esc(t('correctMeasurement'))}" title="${esc(t('correctMeasurement'))}">${icon('edit')}</button>` : '');
+  const bp = `<div class="vin wide ${vitalStatus('sbp', sbp, age)}"><label class="vin-l" for="vi-sbp">${icon('heart')}<span>${esc(t('bp'))}</span></label>
+    <div class="vin-f"><input id="vi-sbp" type="number" inputmode="numeric" data-vital="sbp" value="${fix(sbp)}" placeholder="${esc(t('sbp'))}" aria-label="${esc(t('sbp'))}" ${ro ? 'disabled' : ''}>
+    <b class="vin-sep">/</b><input id="vi-dbp" type="number" inputmode="numeric" data-vital="dbp" value="${fix(dbp)}" placeholder="${esc(t('dbp'))}" aria-label="${esc(t('dbp'))}" ${ro ? 'disabled' : ''}>
+    <span class="unit">mmHg</span>${fixBtn('bp', typeof sbp === 'number' || typeof dbp === 'number')}</div></div>`;
+  const cells = VIN.map(([k, ic]) => {
     const x = v[`vitals.${k}`];
-    if (typeof x === 'number') { val = `${x}<small>${esc(UNITS[k])}</small>`; status = vitalStatus(k, x, age); }
-    const prev = readingsOf(store, `vitals.${k}`).slice(0, -1);
-    if (prev.length) trend = `${t('earlier')}: ${prev.slice(-2).join(', ')}`;
+    return `<div class="vin ${vitalStatus(k, x, age)}"><label class="vin-l" for="vi-${k}">${icon(ic)}<span>${esc(t(k))}</span></label>
+      <div class="vin-f"><input id="vi-${k}" type="number" inputmode="decimal" step="any" data-vital="${k}" value="${fix(x)}" placeholder="—" aria-label="${esc(t(k))}" ${ro ? 'disabled' : ''}>
+      <span class="unit">${esc(UNITS[k])}</span>${fixBtn(k, typeof x === 'number')}</div></div>`;
+  }).join('');
+  return `<div class="vins">${bp}${cells}</div>`;
+}
+
+/** Saves one typed vital. A changed value is a new reading (earlier value kept in history); BP pairs are checked. */
+async function commitVital(el) {
+  const k = el.dataset.vital;
+  const raw = el.value.trim();
+  const curVal = store.getFact(`vitals.${k}`);
+  if (raw === '') return;
+  const a = Number(raw);
+  const c = validateVital(k, a);
+  if (!c.ok) { toast(c.message, true); el.value = typeof curVal === 'number' ? String(curVal) : ''; return; }
+  if (a === curVal) return;
+  if (k === 'sbp' || k === 'dbp') {
+    const other = num($(k === 'sbp' ? '#vi-dbp' : '#vi-sbp')?.value);
+    const s = k === 'sbp' ? a : other; const d = k === 'dbp' ? a : other;
+    if (Number.isFinite(s) && Number.isFinite(d)) {
+      const pair = checkBpPair(s, d);
+      if (!pair.ok) {
+        const r = await ask({ title: t('bp'), body: `<p>${esc(pair.message)}</p>`, actions: [{ id: 'ok', label: t('confirm'), kind: 'primary' }, { id: 'cancel', label: t('cancel') }] });
+        if (!r || r.action !== 'ok') { el.value = typeof curVal === 'number' ? String(curVal) : ''; render(); return; }
+      }
+    }
   }
-  const label = t(k === 'bp' ? 'bp' : k);
-  return `<button class="vt ${status}" data-act="vital" data-k="${k}" ${isFinal() ? 'disabled' : ''}><span class="lab">${icon(ic)}${esc(label)}</span>
-    <span class="val ${val ? '' : 'empty'}">${val ?? esc(t('tapToEnter'))}</span>${trend ? `<span class="trend">${esc(trend)}</span>` : ''}</button>`;
+  store.setFact(`vitals.${k}`, a, { origin: 'measurement', replace: curVal !== undefined, reason: 'Repeat measurement' });
+  render();
+}
+
+const SYS_ICON = { gen: ['user', 'blue'], cvs: ['heart', 'red'], resp: ['lungs', 'teal'], abd: ['stomach', 'orange'], neuro: ['brain', 'purple'], msk: ['spine', 'slate'],
+  skin: ['bandage', 'pink'], heent: ['eye', 'blue'], gu: ['kidney', 'teal'], mse: ['bulb', 'purple'] };
+const optOn = (o) => { const v = store.getFact(o.fact); return v !== undefined && v !== 'no'; };
+function examSystemHtml(sys) {
+  const nOn = sys.groups.reduce((n, g) => n + (g.fact ? (store.getFact(g.fact) !== undefined ? 1 : 0) : g.options.filter(optOn).length), 0);
+  const [ic, tone] = SYS_ICON[sys.key] ?? ['stethoscope', 'blue'];
+  const groups = sys.groups.map((g) => {
+    if (g.fact) {
+      const def = FACTS[g.fact]; const cur = store.getFact(g.fact);
+      return `<div class="exg"><div class="exg-t">${esc(g.title)}</div><div class="exgrid">${def.options.map((o) => `<button class="opt ${o.v === 'A' ? 'normal' : 'abn'} ${cur === o.v ? 'on' : ''}" data-act="exam-choice" data-f="${g.fact}" data-v="${o.v}" aria-pressed="${cur === o.v}">${esc(L(o))}</button>`).join('')}</div></div>`;
+    }
+    return `<div class="exg"><div class="exg-t">${esc(g.title)}</div><div class="exgrid">${g.options.map((o) => `<button class="opt ${o.normal ? 'normal' : 'abn'} ${optOn(o) ? 'on' : ''}" data-act="exam" data-f="${o.fact}" aria-pressed="${optOn(o)}">${esc(o.label)}</button>`).join('')}</div></div>`;
+  }).join('');
+  const open = ui.openSys?.[sys.key] ?? (sys.key === 'gen' || nOn > 0);
+  const nFree = normalCandidates(sys).length;
+  const restBtn = nFree ? `<div class="exnorm"><button class="btn small" data-act="exam-normal" data-sys="${sys.key}">${icon('check')}${esc(nOn ? (ui.lang === 'ar' ? 'باقي الفحص طبيعي…' : 'Rest normal…') : (ui.lang === 'ar' ? 'الكل طبيعي…' : 'All normal…'))}</button></div>` : '';
+  return `<details class="card flat exsys" data-sys="${sys.key}" ${open ? 'open' : ''}><summary class="card-h">${tile(ic, tone, 'sm')}<h4>${esc(L(sys.title))}</h4>${nOn ? `<span class="pill ok">${nOn}</span>` : ''}</summary>${restBtn}${groups}</details>`;
+}
+
+// Bulk "normal": only groups with nothing recorded yet; never the genitourinary/obstetric system or the rectal examination,
+// which must be documented individually. The clinician sees every statement and unticks anything not examined.
+const NO_BULK_NORMAL = new Set(['gu']);
+const NO_BULK_GROUP = new Set(['pr']);
+function normalCandidates(sys) {
+  if (NO_BULK_NORMAL.has(sys.key)) return [];
+  return sys.groups.filter((g) => !NO_BULK_GROUP.has(g.id) && (g.fact
+    ? store.getFact(g.fact) === undefined && FACTS[g.fact]?.options?.some((o) => o.v === 'A')
+    : g.options.some((o) => o.normal) && !g.options.some(optOn)));
+}
+function normalLabel(g) {
+  if (g.fact) return L(FACTS[g.fact].options.find((o) => o.v === 'A'));
+  return g.options.find((o) => o.normal).label;
+}
+function recordNormal(g) {
+  const why = { origin: 'clinician', replace: true, reason: 'Normal examination recorded' };
+  if (g.fact) { if (store.getFact(g.fact) === undefined) store.setFact(g.fact, 'A', why); return; }
+  const o = g.options.find((x) => x.normal);
+  store.setFact(o.fact, FACTS[o.fact]?.type === 'yesno' ? 'yes' : 'present', why);
+  for (const x of g.options) if (!x.normal && FACTS[x.fact]?.type === 'yesno' && store.getFact(x.fact) === undefined) store.setFact(x.fact, 'no', why);
+}
+
+// ---------------------------------------------------------------- vocabulary (tens of thousands of terms)
+let vxIndex = null; let vxLoading = null;
+function loadVocab() {
+  if (vxIndex) return Promise.resolve(vxIndex);
+  if (!vxLoading) {
+    vxLoading = (async () => {
+      const raw = {};
+      await Promise.all(PACKS.map(async (p) => {
+        try {
+          const el = document.getElementById(`vx-${p}`); // embedded (single-file offline edition)
+          let u;
+          if (el) {
+            const bin = atob(el.textContent.trim()); u = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i += 1) u[i] = bin.charCodeAt(i);
+          } else {
+            const r = await fetch(`./vocab/${p}.json.gz`); // light edition: separate file, cached offline by the service worker
+            if (!r.ok) return;
+            u = new Uint8Array(await r.arrayBuffer());
+          }
+          raw[p] = decodePack(u);
+        } catch { /* a missing pack only limits that category */ }
+      }));
+      vxIndex = buildIndex(raw);
+      return vxIndex;
+    })();
+  }
+  return vxLoading;
+}
+const VX = {
+  symptom: { en: 'Symptom', ar: 'عرض', icon: ['clipboard', 'blue'], src: 'HPO', acts: [['present', '+', 'Present', 'موجود'], ['absent', '−', 'Absent', 'غير موجود']] },
+  sign: { en: 'Sign', ar: 'علامة', icon: ['stethoscope', 'teal'], src: 'HPO', acts: [['present', '+', 'Present', 'موجودة'], ['absent', '−', 'Absent', 'غير موجودة']] },
+  pmh: { en: 'Past history', ar: 'تاريخ مرضي', icon: ['clipboard', 'slate'], src: 'ICD-10-CM', acts: [['yes', '+', 'Add', 'إضافة']] },
+  med: { en: 'Current medication', ar: 'دواء حالي', icon: ['pill', 'purple'], src: 'RxNorm', acts: [['taking', '+', 'Add', 'إضافة']] },
+  allergy: { en: 'Drug allergy', ar: 'حساسية دواء', icon: ['shield', 'red'], src: 'RxNorm', acts: [['yes', '+', 'Add', 'إضافة']] },
+  dx: { en: 'Diagnosis', ar: 'تشخيص', icon: ['star', 'purple'], src: 'ICD-10-CM', acts: [['selected', '+', 'Add', 'إضافة']] },
+  lab: { en: 'Laboratory / bedside test', ar: 'تحليل / فحص سريري', icon: ['flask', 'teal'], src: 'Catalogue', acts: [['requested', '+', 'Request', 'اطلب']] },
+  imaging: { en: 'Imaging / monitoring', ar: 'أشعة / مراقبة', icon: ['imaging', 'slate'], src: 'ICD-10-PCS', acts: [['requested', '+', 'Request', 'اطلب']] },
+  procedure: { en: 'Procedure', ar: 'إجراء', icon: ['scalpel', 'purple'], src: 'ICD-10-PCS', acts: [['performed', '✓', 'Done', 'تم']] },
+  drug: { en: 'Medication order', ar: 'طلب دواء', icon: ['syringe', 'purple'], src: 'RxNorm', acts: [['ordered', '+', 'Order', 'اطلب']] },
+};
+const STATUS_TXT = { present: ['Present', 'موجود'], absent: ['Absent', 'غير موجود'], yes: ['Recorded', 'مسجل'], taking: ['Taking', 'يتناوله'], selected: ['Selected', 'مختار'],
+  requested: ['Requested', 'مطلوب'], performed: ['Done', 'تم'], ordered: ['Ordered', 'مطلوب'] };
+const stTxt = (st) => (STATUS_TXT[st] ?? [st, st])[ui.lang === 'ar' ? 1 : 0];
+
+/** Button + current picks for one vocabulary kind (used in every tab). */
+function vxBlock(kind) {
+  const m = VX[kind]; const list = picks(store, kind); const ro = isFinal();
+  const items = list.map((x) => `<div class="vxrow"><span class="grow"><b>${esc(x.label)}</b>${x.instr ? `<span class="tiny"> — ${esc(x.instr)}</span>` : ''}<span class="tiny"> · ${esc(x.code || x.sys)}</span></span>
+    <span class="pill ${x.status === 'absent' ? 'muted' : 'ok'}">${esc(stTxt(x.status))}</span>${ro ? '' : `<button class="iconbtn sm" data-act="vx-remove" data-key="${esc(x.key)}" aria-label="${esc(t('delete'))}">${icon('x')}</button>`}</div>`).join('');
+  return `<div class="vxblock">${ro ? '' : `<button class="btn block vxbtn" data-act="vx-open" data-kind="${kind}">${tile(m.icon[0], m.icon[1], 'sm')}<span class="grow">${icon('plus')} ${esc(ui.lang === 'ar' ? m.ar : m.en)}</span><span class="tiny">${esc(m.src)}${vxIndex ? ` · ${(vxIndex[kind]?.length ?? 0).toLocaleString('en')}` : ''}</span></button>`}${items}</div>`;
+}
+
+function vxSheet(sh) {
+  const m = VX[sh.kind]; const ar = ui.lang === 'ar';
+  const head = `<h3 class="mt">${tile(m.icon[0], m.icon[1], 'sm')} ${esc(ar ? m.ar : m.en)}</h3>`;
+  if (!vxIndex) { loadVocab().then(() => render()); return `${head}<p class="muted">${esc(ar ? 'جارٍ تحميل القاموس الطبي…' : 'Loading the medical vocabulary…')}</p>`; }
+  const cats = sh.kind === 'symptom' || sh.kind === 'sign' ? vxIndex.hpoCats : sh.kind === 'lab' ? [...new Set(vxIndex.lab.map((e) => e.cat))]
+    : sh.kind === 'imaging' || sh.kind === 'procedure' ? [...new Set(vxIndex[sh.kind].map((e) => e.cat))] : [];
+  return `${head}
+    <label class="search">${icon('search')}<input id="vxq" type="search" data-bind="vxq" value="${esc(sh.q ?? '')}" placeholder="${esc(ar ? 'ابحث بالاسم أو المرادف أو الكود…' : 'Search by name, synonym or code…')}" aria-label="search" autocomplete="off"></label>
+    ${cats.length ? `<div class="chips-scroll">${[`<button class="chip ${!sh.cat ? 'blue' : ''}" data-act="vx-cat" data-cat="">${esc(ar ? 'الكل' : 'All')}</button>`, ...cats.map((c) => `<button class="chip ${sh.cat === c ? 'blue' : ''}" data-act="vx-cat" data-cat="${esc(c)}">${esc(c)}</button>`)].join('')}</div>` : ''}
+    <div id="vxres">${vxResults(sh)}</div>
+    <p class="tiny">${esc(vxSourceLine(sh.kind))}</p>`;
+}
+
+function vxSourceLine(kind) {
+  const p = VX[kind].src;
+  if (p === 'HPO') return `This product uses the Human Phenotype Ontology (version ${vxIndex.hpoMeta?.release ?? ''}). hpo.jax.org`;
+  if (p === 'ICD-10-CM') return `${vxIndex.icdMeta?.release ?? 'ICD-10-CM'} — CDC/NCHS, public domain. Local coding systems (e.g. ICD-10-AM) may differ.`;
+  if (p === 'ICD-10-PCS') return `${vxIndex.pcsMeta?.release ?? 'ICD-10-PCS'} — CMS, public domain.`;
+  if (p === 'RxNorm') return 'RxNorm (NLM) normalized drug names and RxClass (VA MED-RT, FDA) classes — US government works. No doses are suggested for these entries.';
+  return 'Laboratory catalogue written for this app; reference ranges are laboratory-specific and not shown.';
+}
+
+function vxResults(sh) {
+  const ar = ui.lang === 'ar'; const ro = isFinal();
+  const res = vxSearch(vxIndex, sh.kind, sh.q ?? '', { cat: sh.cat || null, limit: 40 });
+  if (!res.length) return `<p class="muted">${esc(t('noResults'))}</p>`;
+  return res.map((e) => {
+    const key = vxKey(sh.kind, e.id); const cur = store.getFact(key);
+    const acts = ro ? '' : cur ? `<span class="pill ok">${esc(stTxt(cur.status))}</span><button class="btn small ghost" data-act="vx-remove" data-key="${esc(key)}">${esc(t('undo'))}</button>`
+      : VX[sh.kind].acts.map(([st, sym, en, arl]) => `<button class="btn small ${st === 'absent' ? 'ghost' : 'primary'}" data-act="vx-add" data-kind="${sh.kind}" data-id="${esc(e.id)}" data-st="${st}">${esc(sym)} ${esc(ar ? arl : en)}</button>`).join('');
+    const ref = e.classes ? [e.classes.length ? `Class: ${e.classes.slice(0, 2).join(', ')}` : '', e.treats?.length ? `May treat: ${e.treats.slice(0, 3).join(', ')}` : '', e.ci?.length ? `Contraindicated with: ${e.ci.slice(0, 3).join(', ')}` : ''].filter(Boolean).join(' · ') : '';
+    return `<div class="vxres"><div class="grow"><div class="title">${esc(e.label)}</div><div class="tiny">${esc([e.code, e.cat].filter(Boolean).join(' · '))}${e.syn ? ` · ${esc(e.syn.slice(0, 90))}` : ''}</div>${ref ? `<div class="tiny ref">${esc(ref)}</div>` : ''}</div><div class="acts">${acts}</div></div>`;
+  }).join('');
 }
 
 function examView() {
@@ -437,18 +682,19 @@ function examView() {
   const o2 = v['vitals.o2device'];
   const g = { e: v['gcs.e'], v: v['gcs.v'], m: v['gcs.m'] };
   const gcs = calcGcs(g);
-  const gcsRows = [['e', 'eye'], ['v', 'verbal'], ['m', 'motor']].map(([k, lk]) => `<div class="field"><label>${esc(t(lk))}</label><div class="gcsrow">${GCS_OPTIONS[k].map((o) =>
+  const gcsRows = [['e', 'eye'], ['v', 'verbal'], ['m', 'motor']].map(([k, lk]) => `<div class="field"><label>${esc(t(lk))}</label><div class="gcsrow" style="--n:${GCS_OPTIONS[k].length}">${GCS_OPTIONS[k].map((o) =>
     `<button class="opt ${g[k] === o.v ? 'on' : ''}" data-act="gcs" data-k="${k}" data-v="${o.v}" title="${esc(L(o))}"><b>${o.v}</b>${esc(L(o))}</button>`).join('')}</div></div>`).join('');
   return `<div class="stack">
     <div class="section-title" style="margin-top:0"><h3>${esc(t('vitalsT'))}</h3></div>
-    <div class="vgrid">${VT.map(vitalTile).join('')}</div>
+    ${vitalsEntryHtml(v)}
     ${derived.length ? `<div class="derived">${derived.map(([l, x]) => `<span class="chip blue">${icon('calc')}${esc(l)}: ${esc(x)}</span>`).join('')}</div>` : ''}
     <div class="field"><label>${esc(t('oxygen'))}</label><div class="seg">${O2_OPTIONS.map((o) => `<button class="${o2 === o.v ? 'on' : ''}" data-act="o2" data-v="${o.v}">${esc(L(o))}</button>`).join('')}</div></div>
     <div class="card"><div class="card-h">${tile('brain', 'purple')}<h4>${esc(t('gcs'))}</h4><span class="gcs-total" aria-live="polite">${gcs.complete ? `${gcs.total}<small class="tiny">/15</small>` : ''}</span></div>
       <p class="muted" style="margin-bottom:10px">${esc(gcs.complete || g.e || g.v || g.m ? gcs.text : (ui.lang === 'ar' ? 'اختر العين والكلام والحركة — يُحسب المجموع تلقائياً.' : 'Select eye, verbal and motor — the total is calculated automatically.'))}</p>${gcsRows}</div>
-    <div class="section-title"><h3>${esc(t('examFindings'))}</h3></div>
-    ${pack.exam.map((s) => `<div class="card flat"><div class="card-h">${tile(s.key === 'resp' ? 'lungs' : s.key === 'cvs' ? 'heart' : 'stomach', s.key === 'resp' ? 'teal' : s.key === 'cvs' ? 'red' : 'orange', 'sm')}<h4>${esc(L(s.title))}</h4></div>
-      <div class="exgrid">${s.findings.map((f) => `<button class="opt ${/normal/i.test(f.fact) ? 'normal' : 'abn'} ${store.getFact(f.fact) ? 'on' : ''}" data-act="exam" data-f="${f.fact}" aria-pressed="${!!store.getFact(f.fact)}">${esc(L(f.label))}</button>`).join('')}</div></div>`).join('')}
+    <div class="section-title"><h3>${esc(t('examFindings'))}</h3><span class="tiny">${esc(ui.lang === 'ar' ? 'عام + موضعي' : 'General + local')}</span></div>
+    ${EXAM.map(examSystemHtml).join('')}
+    ${vxBlock('sign')}
+    ${store.activeComplaints().length ? `<button class="btn primary block big" data-act="tab" data-tab="now">${icon('bulb')}${esc(t('planGo'))} (${autoPlan(pack, store).pending})${icon('chevron')}</button>` : ''}
   </div>`;
 }
 
@@ -492,6 +738,7 @@ function workupView() {
     <div class="section-title" style="margin-top:0">${tile('calc', 'teal', 'sm')}<h3>${esc(t('relevantScores'))}</h3></div>${scoreHtml}
     <div class="section-title">${tile('flask', 'red', 'sm')}<h3>${esc(t('tabWorkup'))}</h3><span class="badge ai">${esc(t('aiLabel'))}</span></div>
     ${tiers || `<p class="muted">${esc(t('noRelevant'))}</p>`}
+    <div class="section-title">${tile('flask', 'teal', 'sm')}<h3>${esc(ui.lang === 'ar' ? 'طلب أي فحص آخر' : 'Order any other investigation')}</h3></div>${vxBlock('lab')}${vxBlock('imaging')}
     <div class="section-title">${tile('ecg', 'red', 'sm')}<h3>${esc(t('ecgT'))}</h3></div>${ecg.map(resRow).join('')}
     <div class="section-title">${tile('flask', 'teal', 'sm')}<h3>${esc(t('labs'))}</h3></div>${labs.length ? labs.map(resRow).join('') : `<p class="muted">—</p>`}
   </div>`;
@@ -507,13 +754,14 @@ function thinkView() {
     const action = isFinal() ? '' : on
       ? `<button class="btn small" data-act="unconsider" data-dx="${esc(d.id)}">${esc(t('removeConsider'))}</button>`
       : `<button class="btn small primary" data-act="consider" data-dx="${esc(d.id)}" data-label="${esc(d.dx.en)}">${icon('plus')}${esc(t('addConsider'))}</button>`;
-    return `<div class="item ${on ? 'req' : ''}">${tile(on ? 'check' : 'alert', on ? 'green' : 'orange', 'sm')}<div class="body"><div class="title">${esc(L(d.dx))}</div>
+    return `<div class="item wrap-acts ${on ? 'req' : ''}">${tile(on ? 'check' : 'alert', on ? 'green' : 'orange', 'sm')}<div class="body"><div class="title">${esc(L(d.dx))}</div>
       <details class="why"><summary>${icon('info', { size: 14 })}${esc(t('whyT'))}</summary><p>${esc(d.why)}</p>${srcList(d.sources)}</details>${on ? `<div class="tiny">${esc(t('considered'))}</div>` : ''}</div><div class="acts">${action}</div></div>`;
   }).join('');
   return `<div class="stack"><div class="spread"><h2>${esc(t('thinkTitle'))}</h2><span class="badge ai">${esc(t('aiLabel'))}</span></div>
     <p class="tiny">${esc(t('reviewDraft'))}</p>
     ${r.clusters.length ? `<h3>${esc(t('clusters'))}</h3>${clusters}` : ''}
     <h3>${esc(t('mustNotMissT'))}</h3>${mnm || `<p class="muted">—</p>`}
+    <h3>${esc(ui.lang === 'ar' ? 'أي تشخيص آخر (ICD-10-CM)' : 'Any other diagnosis (ICD-10-CM)')}</h3>${vxBlock('dx')}
     <h3>${esc(t('specialtiesT'))}</h3><div class="row">${r.specialties.map((s) => `<span class="chip purple">${esc(s)}</span>`).join('')}</div></div>`;
 }
 
@@ -538,11 +786,13 @@ function treatView() {
   }).join('') : `<p class="muted">${esc(t('noRelevant'))}</p>`;
   return `<div class="stack">
     ${ctx.child ? `<div class="alert info">${icon('baby')}<div><span class="t">${esc(ui.lang === 'ar' ? 'وضع سلامة الأطفال مفعّل' : 'Paediatric safety mode')}</span><small>${esc(ui.lang === 'ar' ? 'تظهر جرعات الأطفال فقط، ويلزم الوزن قبل أي جرعة محسوبة بالوزن.' : 'Only paediatric doses are shown; weight is required before any weight-based dose.')}</small></div></div>` : ''}
-    <div class="section-title" style="margin-top:0">${tile('syringe', 'purple', 'sm')}<h3>${esc(ui.lang === 'ar' ? 'أدوية ذات صلة' : 'Relevant medications')}</h3><span class="badge ai">${esc(t('aiLabel'))}</span></div>${sugHtml}
+    ${store.activeComplaints().length ? `<button class="btn block" data-act="tab" data-tab="now">${icon('bulb')}${esc(t('planGo'))}${icon('chevron')}</button>` : ''}
+    <div class="section-title">${tile('syringe', 'purple', 'sm')}<h3>${esc(ui.lang === 'ar' ? 'أدوية ذات صلة' : 'Relevant medications')}</h3><span class="badge ai">${esc(t('aiLabel'))}</span></div>${sugHtml}
     <div class="section-title">${tile('pill', 'purple', 'sm')}<h3>${esc(ui.lang === 'ar' ? 'مكتبة الأدوية' : 'Medication library')}</h3></div>
     <label class="search">${icon('search')}<input id="dsearch" type="search" data-bind="dsearch" value="${esc(ui.drugSearch ?? '')}" placeholder="${esc(t('searchAll'))}" aria-label="${esc(t('searchAll'))}"></label>
     <div id="dlist">${lib.map((d) => `<button class="scorecard" data-act="open-drug" data-id="${d.id}">${tile(d.icon[0], d.icon[1], 'sm')}<span class="body"><span class="title">${esc(d.name)}</span><span class="sub" style="display:block">${esc(d.cls)}</span></span>${icon('chevron')}</button>`).join('')}</div>
     <p class="tiny">${esc(DRUG_REVIEW)}</p>
+    <div class="section-title">${tile('syringe', 'purple', 'sm')}<h3>${esc(ui.lang === 'ar' ? 'أي دواء أو إجراء آخر' : 'Any other medication or procedure')}</h3></div>${vxBlock('drug')}${vxBlock('procedure')}
     <div class="card"><div class="card-h">${tile('clipboard', 'blue')}<h4>${esc(t('treatmentsGiven'))}</h4></div>
       ${tx.length ? `<ul class="tl">${tx.map((e) => `<li><time>${esc(formatTime(e.at))}</time><span>${esc(e.text)}</span></li>`).join('')}</ul>` : `<p class="muted">${esc(t('noEvents'))}</p>`}
       ${ro ? '' : `<div class="field" style="margin-top:12px"><label for="txtext">${esc(t('eventText'))}</label><input id="txtext" type="text" data-enter="add-treatment" placeholder="${ui.lang === 'ar' ? 'علاج آخر غير موجود في المكتبة' : 'Other treatment not in the library'}"></div>
@@ -666,7 +916,7 @@ function caseView() {
   const views = { now: nowView, history: historyView, exam: examView, workup: workupView, think: thinkView, treat: treatView, note: noteView };
   const body = (views[ui.tab] ?? nowView)();
   return `${patientStrip()}<div class="shell">${navHtml()}<main><div class="content">${body}</div></main>${sidePanel()}</div>
-    <div class="fab"><button class="btn primary" data-act="copy" data-target="complete">${icon('copy')}${esc(t('copyAll'))}</button></div>`;
+    <div class="fab"><button class="btn primary" data-act="copy" data-target="complete" aria-label="${esc(t('copyAll'))}" title="${esc(t('copyAll'))}">${icon('copy')}${esc(t('copyAllShort'))}</button></div>`;
 }
 
 // ---------------------------------------------------------------- library (calculator mode)
@@ -795,6 +1045,8 @@ function sheetHtml() {
   else if (sh.type === 'ask') inner = `${questionHtml(sh.key, { st: S() })}`;
   else if (sh.type === 'search') inner = searchSheet();
   else if (sh.type === 'drug') inner = drugSheet(sh);
+  else if (sh.type === 'vx') inner = vxSheet(sh);
+  else if (sh.type === 'dictlang') inner = dictLangSheet(sh);
   return `<div class="modal-bg" data-act="close-sheet-bg"><div class="modal" role="dialog" aria-modal="true"><div class="grab"></div>
     <div class="spread" style="margin-bottom:8px"><span></span><button class="iconbtn" data-act="close-sheet" aria-label="${esc(t('close'))}">${icon('x')}</button></div>${inner}</div></div>`;
 }
@@ -874,7 +1126,172 @@ function searchResults(comps, scs, invs, inCase, q) {
     ${invs.map((x) => `<div class="scorecard">${tile((KIND_ICON[x.kind] ?? KIND_ICON.lab)[0], (KIND_ICON[x.kind] ?? KIND_ICON.lab)[1], 'sm')}<span class="body"><span class="title">${esc(L(x.label))}</span></span></div>`).join('')}`;
 }
 
+// ================================================================ dictation (speech-to-text, any text field)
+const DICT_FIELDS = ['text', 'ptext', 'imp', 'dx', 'refq', 'dmeds', 'dfu', 'txtext', 'evtext'];
+const SR = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition || null) : null;
+const dict = {
+  rec: null, target: null, base: '', finals: '', stopping: false, avail: {}, perm: null,
+  lang: (() => { try { const v = localStorage.getItem('ufc-dict-lang'); return v && DICT_BY_CODE[v] ? v : null; } catch { return null; } })(),
+  recent: (() => { try { return JSON.parse(localStorage.getItem('ufc-dict-recent') || '[]').filter((c) => DICT_BY_CODE[c]); } catch { return []; } })(),
+};
+/** Embedded app previews (Claude app file viewer, WhatsApp, file managers) never grant the microphone. */
+function inAppPreview() {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  const androidWebView = /Android/.test(ua) && /; wv\)/.test(ua);
+  const iosWebView = /iPhone|iPad|iPod/.test(ua) && !/Safari\//.test(ua);
+  const localOnPhone = /Android|iPhone|iPad/.test(ua) && typeof location !== 'undefined' && /^(file|content|blob):$/.test(location.protocol);
+  return androidWebView || iosWebView || localOnPhone;
+}
+const PREVIEW_MSG = {
+  en: 'This page is open inside an app preview (for example the Claude app file viewer, WhatsApp or a file manager). Previews block the microphone, so dictation cannot work here. Open the app from an https link in Chrome or Safari. Meanwhile, the microphone key on your phone keyboard works in every text field.',
+  ar: 'الصفحة مفتوحة داخل معاينة تطبيق (مثل عارض الملفات في تطبيق Claude أو واتساب أو مدير الملفات). المعاينات تمنع الميكروفون، فلا يعمل الإملاء هنا. افتح البرنامج من رابط https في Chrome أو Safari. وإلى ذلك الحين، زر الميكروفون في لوحة مفاتيح الجوال يعمل في أي حقل نصي.',
+};
+const dictLang = () => dict.lang || (ui.lang === 'ar' ? 'ar-SA' : 'en-US');
+const langName = (code) => { const l = DICT_BY_CODE[code]; return l ? (ui.lang === 'ar' ? l.ar : l.en) : code; };
+const langShort = (code) => { const l = DICT_BY_CODE[code]; if (!l) return code; return l.group === 'ar' ? `${ui.lang === 'ar' ? 'عربي' : 'AR'} · ${ui.lang === 'ar' ? l.ar : l.en}` : (ui.lang === 'ar' ? l.ar : l.en); };
+function setDictLang(code) {
+  dict.lang = code;
+  dict.recent = [code, ...dict.recent.filter((c) => c !== code)].slice(0, 4);
+  try { localStorage.setItem('ufc-dict-lang', code); localStorage.setItem('ufc-dict-recent', JSON.stringify(dict.recent)); } catch { /* ignore */ }
+}
+
+/** Ask the device which languages it can recognise (remote or on-device). Only where the browser supports the check. */
+async function checkDictLangs(codes) {
+  if (!SR || typeof SR.available !== 'function') return false;
+  await Promise.all(codes.map(async (code) => {
+    if (dict.avail[code]) return;
+    try {
+      const [any, local] = await Promise.all([SR.available({ langs: [code] }), SR.available({ langs: [code], processLocally: true })]);
+      dict.avail[code] = { any, local };
+    } catch { dict.avail[code] = { any: 'unknown', local: 'unknown' }; }
+  }));
+  return true;
+}
+const joinTxt = (a, b) => [a, b].map((x) => (x ?? '').trim()).filter(Boolean).join(' ');
+
+function micHtml(id) {
+  const ar = ui.lang === 'ar';
+  const live = dict.target === id;
+  return `<div class="dict">${id === 'text' ? '' : `<button type="button" class="btn small mic ${live ? 'live' : ''}" data-act="dictate" data-target="${id}" aria-pressed="${live}">${icon('mic')}${esc(live ? (ar ? 'إيقاف' : 'Stop') : t('dictate'))}</button>`}
+    <button type="button" class="btn small ghost" data-act="dict-lang" data-target="${id}" title="${ar ? 'لغة الإملاء' : 'Dictation language'}">${icon('globe')}${esc(langShort(dictLang()))}</button>
+    ${!dictLang().startsWith('en') && typeof self !== 'undefined' && 'Translator' in self ? `<button type="button" class="btn small ghost" data-act="dict-translate" data-target="${id}">${esc(ar ? 'ترجمة للإنجليزية' : 'Translate to English')}</button>` : ''}
+    ${live ? `<span class="listening"><i></i>${ar ? 'يستمع…' : 'Listening…'}</span>` : ''}</div>`;
+}
+
+/** Language picker with device diagnostics (why dictation may not work here). */
+function dictLangSheet(sh) {
+  const ar = ui.lang === 'ar'; const cur = dictLang();
+  const secure = typeof window !== 'undefined' && window.isSecureContext;
+  const proto = typeof location !== 'undefined' ? location.protocol : '';
+  const diag = [
+    [!inAppPreview(), ar ? 'الصفحة مفتوحة في متصفح (وليست معاينة داخل تطبيق)' : 'Opened in a browser (not an in-app preview)', ar ? PREVIEW_MSG.ar : PREVIEW_MSG.en],
+    [!!SR, ar ? 'التعرّف الصوتي مدعوم في هذا المتصفح' : 'Speech recognition supported in this browser',
+      ar ? 'غير مدعوم هنا: افتح البرنامج في Chrome أو Edge أو Safari (وليس من معاينة واتساب أو مدير الملفات).' : 'Not supported here: open the app in Chrome, Edge or Safari (not inside a WhatsApp or file-manager preview).'],
+    [secure, ar ? 'الصفحة آمنة (https أو ملف محلي على الكمبيوتر)' : 'Secure page (https, or a local file on a computer)',
+      ar ? `الصفحة مفتوحة عبر ${proto} — الميكروفون قد يُمنع. افتح البرنامج من رابط https.` : `Opened via ${proto} — the microphone may be blocked. Open the app from an https link.`],
+    [dict.perm !== 'denied', ar ? 'إذن الميكروفون غير مرفوض' : 'Microphone permission not denied',
+      ar ? 'إذن الميكروفون مرفوض: افتح إعدادات الموقع في المتصفح واسمح بالميكروفون.' : 'Microphone permission is denied: open the site settings in the browser and allow the microphone.'],
+  ];
+  const badge = (code) => {
+    const a = dict.avail[code];
+    if (!a) return '';
+    if (a.local === 'available') return `<span class="pill ok">${ar ? 'يعمل دون إنترنت' : 'Works offline'}</span>`;
+    if (a.local === 'downloadable' || a.local === 'downloading') return `<span class="pill info">${ar ? 'متاح · قابل للتنزيل دون إنترنت' : 'Available · offline download'}</span>`;
+    if (a.any === 'available') return `<span class="pill info">${ar ? 'متاح (يحتاج إنترنت)' : 'Available (needs internet)'}</span>`;
+    if (a.any === 'unavailable') return `<span class="pill muted">${ar ? 'غير مدعوم على هذا الجهاز' : 'Not supported on this device'}</span>`;
+    return '';
+  };
+  const btn = (code) => `<button class="langopt ${code === cur ? 'on' : ''}" data-act="dict-pick" data-code="${code}" data-target="${esc(sh.target ?? '')}"><b>${esc(langName(code))}</b><span class="tiny">${esc(code)}</span>${badge(code)}</button>`;
+  const recent = dict.recent.filter((c) => c !== cur);
+  return `<h3 class="mt">${icon('globe')} ${esc(ar ? 'لغة الإملاء' : 'Dictation language')}</h3>
+    <div class="diag">${diag.map(([ok, good, bad]) => `<div class="${ok ? 'ok' : 'bad'}">${icon(ok ? 'check' : 'alert', { size: 16 })}<span>${esc(ok ? good : bad)}</span></div>`).join('')}</div>
+    ${recent.length ? `<div class="langgrid">${[cur, ...recent].map(btn).join('')}</div>` : ''}
+    ${DICT_GROUPS.map((g) => `<div class="section-title"><h3>${esc(ar ? g.ar : g.en)}</h3></div><div class="langgrid">${g.langs.map(([code]) => btn(code)).join('')}</div>`).join('')}
+    <div class="section-title"><h3>${esc(ar ? 'غير مدعومة' : 'Not supported')}</h3></div>
+    ${DICT_UNSUPPORTED.map((u) => `<div class="langopt off" aria-disabled="true"><b>${esc(ar ? u.ar : u.en)}</b><span class="tiny">${esc(ar ? u.why.ar : u.why.en)}</span></div>`).join('')}
+    <p class="tiny">${esc(ar ? 'الإملاء يكتب بلغة المتحدث وحروفها. دعم كل لغة يعتمد على محرك الكلام في المتصفح والجهاز؛ يتحقق البرنامج منه حيث يسمح المتصفح.' : 'Dictation writes in the speaker\'s language and script. Support for each language depends on the browser and device speech engine; the app checks it where the browser allows.')}</p>`;
+}
+
+function writeDictation(interim) {
+  const el = document.getElementById(dict.target);
+  if (!el) { stopDictation(); return; }
+  el.value = joinTxt(dict.base, joinTxt(dict.finals, interim));
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function startDictation(id) {
+  const ar = ui.lang === 'ar';
+  if (!SR) {
+    ask({ title: ar ? 'الإملاء الصوتي غير مدعوم في هذا المتصفح' : 'Dictation is not supported in this browser',
+      body: `<p>${esc(ar ? 'افتح البرنامج في Chrome أو Edge أو Safari. أو استخدم زر الميكروفون في لوحة مفاتيح الجوال — يعمل في أي حقل نصي.' : 'Open the app in Chrome, Edge or Safari, or use the microphone key on your phone keyboard — it works in every text field.')}</p>`,
+      actions: [{ id: 'ok', label: t('confirm'), kind: 'primary' }] });
+    return;
+  }
+  if (dict.target) stopDictation(true);
+  const el = document.getElementById(id);
+  if (!el) return;
+  dict.lang = dictLang();
+  const rec = new SR();
+  rec.lang = dict.lang; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 1;
+  if (dict.avail[dict.lang]?.local === 'available' && typeof SR.available === 'function') rec.processLocally = true; // on-device: works offline
+  Object.assign(dict, { rec, target: id, base: el.value, finals: '', stopping: false });
+  rec.onresult = (ev) => {
+    let interim = ''; let final = false;
+    for (let i = ev.resultIndex; i < ev.results.length; i += 1) {
+      const r = ev.results[i];
+      if (r.isFinal) { dict.finals = joinTxt(dict.finals, r[0].transcript); final = true; } else interim += r[0].transcript;
+    }
+    writeDictation(interim);
+    const cur = document.getElementById(dict.target);
+    if (final && cur?.dataset.save) cur.dispatchEvent(new Event('change', { bubbles: true })); // fields saved to the case
+  };
+  rec.onerror = (ev) => {
+    const MSG = {
+      'not-allowed': ar ? 'تم رفض إذن الميكروفون. اسمح للمتصفح باستخدام الميكروفون ثم أعد المحاولة.' : 'Microphone permission was denied. Allow microphone access for this page and try again.',
+      'service-not-allowed': ar ? 'المتصفح لا يسمح بخدمة الإملاء لهذه الصفحة. افتحها عبر رابط https أو استخدم ميكروفون لوحة المفاتيح.' : 'The browser does not allow speech recognition for this page. Open it over https or use the keyboard microphone.',
+      'network': ar ? 'الإملاء في هذا المتصفح يحتاج اتصالاً بالإنترنت. بدون إنترنت استخدم ميكروفون لوحة مفاتيح الجوال.' : 'Dictation in this browser needs an internet connection. Offline, use the phone keyboard microphone.',
+      'audio-capture': ar ? 'لم يُعثر على ميكروفون.' : 'No microphone was found.',
+      'language-not-supported': ar ? `${langName(dict.lang)}: غير مدعومة للإملاء في هذا المتصفح أو الجهاز. اختر لغة أخرى أو استخدم ميكروفون لوحة المفاتيح.` : `${langName(dict.lang)} is not supported for dictation in this browser or device. Choose another language or use the keyboard microphone.`,
+    };
+    if (ev.error === 'no-speech' || ev.error === 'aborted') return; // silence: keep listening (restarted on end)
+    // fatal: stop and return the button to its normal state (never leave "Listening…" showing)
+    dict.stopping = true;
+    if (dict.rec === rec) { Object.assign(dict, { rec: null, target: null }); try { rec.abort?.(); } catch { /* ignore */ } render(); }
+    if ((ev.error === 'not-allowed' || ev.error === 'service-not-allowed') && inAppPreview()) {
+      ask({ title: ar ? 'الميكروفون غير متاح في المعاينة' : 'Microphone not available in a preview', body: `<p>${esc(ar ? PREVIEW_MSG.ar : PREVIEW_MSG.en)}</p>`, actions: [{ id: 'ok', label: t('confirm'), kind: 'primary' }] });
+      return;
+    }
+    toast(MSG[ev.error] ?? (ar ? 'تعذّر الإملاء الصوتي.' : 'Dictation failed.'), true);
+  };
+  rec.onend = () => {
+    if (!dict.stopping && dict.rec === rec && document.getElementById(dict.target)) {
+      // browsers end recognition after silence; keep listening until the clinician presses Stop
+      dict.base = document.getElementById(dict.target).value; dict.finals = '';
+      try { rec.start(); return; } catch { /* fall through */ }
+    }
+    if (dict.rec === rec) { Object.assign(dict, { rec: null, target: null }); render(); }
+  };
+  try { rec.start(); } catch { toast(ar ? 'تعذّر بدء الإملاء.' : 'Could not start dictation.', true); Object.assign(dict, { rec: null, target: null }); return; }
+  render();
+}
+
+function stopDictation(silent) {
+  const rec = dict.rec; const id = dict.target;
+  dict.stopping = true;
+  Object.assign(dict, { rec: null, target: null });
+  try { rec?.stop(); } catch { /* ignore */ }
+  const el = id && document.getElementById(id);
+  if (el?.dataset.save) el.dispatchEvent(new Event('change', { bubbles: true }));
+  if (!silent) render();
+}
+
 // ================================================================ render
+/** morphdom hook: never overwrite the field the clinician is typing in; skip identical nodes. */
+function keepLive(from, to) {
+  if (from === document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(from.tagName)) return false;
+  return !from.isEqualNode(to);
+}
 function render() {
   try {
     const root = $('#app');
@@ -888,15 +1305,26 @@ function render() {
     else if (ui.screen === 'home' || !store) body = homeView();
     else if (ui.screen === 'intake') body = intakeView();
     else if (ui.screen === 'complaints') body = complaintsView();
-    else if (ui.screen === 'detected') body = detectedView();
     else body = caseView();
-    root.innerHTML = `${topBar()}${body}`;
-    const mainEl = root.querySelector('main .content') ?? root.querySelector('main');
+    // Build the next screen off-DOM, then patch only what changed (no full re-layout on every tap).
+    const next = document.createElement('div');
+    next.innerHTML = `${topBar()}${body}`;
+    const mainEl = next.querySelector('main .content') ?? next.querySelector('main');
     if (mainEl) mainEl.insertAdjacentHTML('beforeend', `<div class="wm" aria-hidden="true">${esc(t('watermark'))}</div>`);
-    $('#sheet').innerHTML = sheetHtml();
+    const nextSheet = document.createElement('div');
+    nextSheet.innerHTML = sheetHtml();
+    for (const id of DICT_FIELDS) {
+      const el = next.querySelector(`#${id}`) ?? nextSheet.querySelector(`#${id}`);
+      if (el && !el.disabled && !el.readOnly) el.insertAdjacentHTML('afterend', micHtml(id));
+    }
+    const opts = { childrenOnly: true, onBeforeElUpdated: keepLive };
+    morphdom(root, next, opts);
+    morphdom($('#sheet'), nextSheet, opts);
     if (ui.screen === 'resus') tickResus();
-    if (keep) { const el = document.getElementById(keep.id); if (el) { el.focus(); try { el.setSelectionRange(keep.s, keep.s); } catch { /* not a text field */ } } }
-    else if (ui.sheet) { const f = $('#sheet input'); if (f && f.type !== 'search') f.focus(); }
+    const sheetKey = ui.sheet ? `${ui.sheet.type}:${ui.sheet.kind ?? ui.sheet.id ?? ui.sheet.k ?? ''}` : null;
+    if (keep) { const el = document.getElementById(keep.id); if (el && el !== document.activeElement) { el.focus(); try { el.setSelectionRange(keep.s, keep.s); } catch { /* not a text field */ } } }
+    else if (ui.sheet && sheetKey !== render.lastSheet) { const f = $('#sheet input'); if (f && f.type !== 'search') f.focus(); }
+    render.lastSheet = sheetKey;
   } catch (e) { fail(e); }
 }
 
@@ -939,7 +1367,9 @@ function setAnswer(key, value) {
   const editing = ui.editKey === key || st.getFact(key) !== undefined;
   st.setFact(key, value, { origin: originFor(key), replace: editing, reason: editing ? 'Updated by clinician' : undefined });
   ui.editKey = null;
-  if (ui.sheet?.type === 'ask') ui.sheet = null;
+  const fromSheet = ui.sheet?.type === 'ask';
+  if (fromSheet) ui.sheet = null;
+  else advanceInterview();
   render();
 }
 
@@ -986,6 +1416,11 @@ const handlers = {
   'open-search': () => { ui.globalSearch = ''; ui.sheet = { type: 'search' }; render(); },
   'close-sheet': () => { ui.sheet = null; render(); },
   'close-sheet-bg': (d, e) => { if (e.target.matches('.modal-bg')) { ui.sheet = null; render(); } },
+  'scribe': () => {
+    ui.intake = { age: '', sex: null, text: '', viaScribe: true };
+    adopt(new CaseStore(createCase({ language: ui.lang })), 'intake');
+    startDictation('text'); // same tap: the microphone starts immediately
+  },
   'new-case': () => { ui.intake = { age: '', sex: null, text: '' }; adopt(new CaseStore(createCase({ language: ui.lang })), 'intake'); },
   'demo': () => adopt(buildDemoStore(), 'case'),
   'open-case': async (d) => {
@@ -999,43 +1434,85 @@ const handlers = {
     await persistence.deleteCase(d.id); await refreshCases(); render();
   },
   'sex': (d) => { ui.intake.sex = d.v; render(); },
-  'dictate': () => {
-    const R = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!R) return;
-    const rec = new R(); rec.lang = ui.lang === 'ar' ? 'ar-SA' : 'en-US'; rec.interimResults = false;
-    rec.onresult = (ev) => { ui.intake.text = `${ui.intake.text} ${ev.results[0][0].transcript}`.trim(); render(); };
-    rec.onerror = () => toast('Dictation unavailable.', true);
-    rec.start(); toast(t('dictate'));
+  'dictate': (d) => {
+    if (dict.target === d.target) { stopDictation(); return; }
+    startDictation(d.target);
+  },
+  'dict-lang': (d) => {
+    ui.sheet = { type: 'dictlang', target: d.target || dict.target || null, back: ui.sheet?.type === 'vx' ? ui.sheet : null };
+    render();
+    navigator.permissions?.query({ name: 'microphone' }).then((st) => { dict.perm = st.state; if (ui.sheet?.type === 'dictlang') render(); }).catch(() => {});
+    const codes = Object.keys(DICT_BY_CODE);
+    checkDictLangs(codes).then((ok) => { if (ok && ui.sheet?.type === 'dictlang') render(); });
+  },
+  'dict-pick': async (d) => {
+    setDictLang(d.code);
+    const a = dict.avail[d.code];
+    if (a && (a.local === 'downloadable') && typeof SR?.install === 'function') {
+      const r = await ask({ title: langName(d.code), body: `<p>${esc(ui.lang === 'ar' ? 'يمكن تنزيل هذه اللغة على الجهاز ليعمل الإملاء دون إنترنت.' : 'This language can be downloaded to the device so dictation works offline.')}</p>`,
+        actions: [{ id: 'ok', label: ui.lang === 'ar' ? 'تنزيل' : 'Download', kind: 'primary' }, { id: 'cancel', label: ui.lang === 'ar' ? 'لاحقاً' : 'Later' }] });
+      if (r?.action === 'ok') {
+        try { const ok = await SR.install({ langs: [d.code], processLocally: true }); if (ok) dict.avail[d.code] = { ...a, local: 'available' }; toast(ok ? (ui.lang === 'ar' ? 'تم التنزيل' : 'Downloaded') : (ui.lang === 'ar' ? 'تعذّر التنزيل' : 'Download failed'), !ok); } catch { toast(ui.lang === 'ar' ? 'تعذّر التنزيل' : 'Download failed', true); }
+      }
+    }
+    const back = ui.sheet?.back ?? null; const target = d.target;
+    ui.sheet = back;
+    const live = dict.target;
+    if (live) { stopDictation(true); startDictation(live); } else render();
+    if (!live && target) toast(`${ui.lang === 'ar' ? 'لغة الإملاء' : 'Dictation language'}: ${langName(d.code)}`);
+  },
+  'dict-translate': async (d) => {
+    const el = document.getElementById(d.target); const ar = ui.lang === 'ar';
+    const text = el?.value.trim();
+    if (!text) { toast(ar ? 'لا يوجد نص للترجمة.' : 'Nothing to translate.', true); return; }
+    const src = dictLang().split('-')[0];
+    try {
+      const av = await self.Translator.availability({ sourceLanguage: src, targetLanguage: 'en' });
+      if (av === 'unavailable') { toast(ar ? `الترجمة من ${langName(dictLang())} غير متاحة في هذا المتصفح.` : `Translation from ${langName(dictLang())} is not available in this browser.`, true); return; }
+      toast(ar ? 'جارٍ الترجمة على الجهاز…' : 'Translating on this device…');
+      const tr = await (await self.Translator.create({ sourceLanguage: src, targetLanguage: 'en' })).translate(text);
+      el.value = `${text}\n[Machine translation to English — verify with an interpreter]: ${tr}`;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      if (el.dataset.save) el.dispatchEvent(new Event('change', { bubbles: true }));
+    } catch { toast(ar ? 'تعذّرت الترجمة.' : 'Translation failed.', true); }
+  },
+  'u-toggle': (d) => {
+    // Remove / restore one understood item before the record is built (nothing is saved yet).
+    ui.intake.off = { ...(ui.intake.off ?? {}), [d.k]: !(ui.intake.off ?? {})[d.k] };
+    const box = $('#live-parse'); if (box) box.innerHTML = parsePreviewHtml(ui.intake.text);
   },
   'intake-submit': () => {
-    const age = num(ui.intake.age);
-    const ageUnknown = ui.intake.age === '';
-    if (!ageUnknown && (Number.isNaN(age) || age < 0 || age > 120)) { toast('Age must be 0–120.', true); return; }
+    // ONE confirmation: the clinician has seen the understood items (and removed any that were wrong).
+    const off = ui.intake.off ?? {};
     const parsed = ui.intake.text.trim() ? parseIntake(ui.intake.text, pack) : null;
-    if (parsed && ageUnknown && typeof parsed.age === 'number') { ui.intake.age = String(parsed.age); return handlers['intake-submit'](); }
-    if (parsed && !ui.intake.sex && parsed.sex) ui.intake.sex = parsed.sex;
-    if (!ui.intake.sex) { toast(t('sex'), true); return; }
-    if (ageUnknown) store.markUnknown('patient.age'); else store.setFact('patient.age', age, { origin: 'clinician' });
-    if (ui.intake.sex === 'unknown') store.markUnknown('patient.sex'); else store.setFact('patient.sex', ui.intake.sex, { origin: 'clinician' });
-    if (ui.intake.text.trim()) store.setFact('patient.presentation', ui.intake.text.trim(), { origin: 'clinician' });
-    if (parsed && (parsed.complaints.length || Object.keys(parsed.facts).length)) {
-      ui.detected = { complaints: parsed.complaints.map((key) => ({ key, on: true })), facts: Object.entries(parsed.facts).map(([key, value]) => ({ key, value, on: true })) };
-      ui.screen = 'detected'; render(); return;
+    const ageTxt = ui.intake.age !== '' ? ui.intake.age : parsed && typeof parsed.age === 'number' && !off.age ? String(parsed.age) : '';
+    const age = num(ageTxt);
+    const ageUnknown = ageTxt === '';
+    if (!ageUnknown && (Number.isNaN(age) || age < 0 || age > 120)) { toast(ui.lang === 'ar' ? 'العمر بين 0 و120.' : 'Age must be 0–120.', true); return; }
+    const sex = ui.intake.sex ?? (parsed?.sex && !off.sex ? parsed.sex : null);
+    if (!sex) {
+      ui.intake.needDemo = true; render();
+      toast(ui.lang === 'ar' ? 'اختر الجنس (أو غير معروف).' : 'Select sex (or Unknown).', true);
+      $('#demo-hand')?.scrollIntoView?.({ block: 'center' });
+      return;
     }
-    ui.screen = 'complaints'; render();
-  },
-  'det-toggle': (d) => { const arr = d.kind === 'c' ? ui.detected.complaints : ui.detected.facts; arr[Number(d.i)].on = !arr[Number(d.i)].on; render(); },
-  'det-skip': () => { ui.detected = null; ui.screen = 'complaints'; render(); },
-  'det-apply': () => {
-    const skipped = [];
-    for (const c of ui.detected.complaints) if (c.on) store.addComplaint(c.key);
-    for (const f of ui.detected.facts) {
-      if (!f.on) continue;
-      const r = store.setFact(f.key, f.value, { origin: 'clinician', reason: 'From clinician free-text entry' });
-      if (!r.ok) skipped.push(f.key);
+    ui.intake.age = ageTxt; ui.intake.sex = sex;
+    if (ageUnknown) store.markUnknown('patient.age'); else store.setFact('patient.age', age, { origin: 'clinician' });
+    if (sex === 'unknown') store.markUnknown('patient.sex'); else store.setFact('patient.sex', sex, { origin: 'clinician' });
+    if (ui.intake.text.trim()) store.setFact('patient.presentation', ui.intake.text.trim(), { origin: 'clinician' });
+    let complaints = 0; const skipped = [];
+    if (parsed) {
+      for (const c of parsed.complaints) if (!off[`c:${c}`]) { store.addComplaint(c); complaints += 1; }
+      for (const [k, v] of Object.entries(parsed.facts)) {
+        if (off[`f:${k}`]) continue;
+        const r = store.setFact(k, v, { origin: 'clinician', reason: 'From clinician free-text entry' });
+        if (!r.ok) skipped.push(k);
+      }
     }
     if (skipped.length) toast(`${skipped.length} item(s) conflicted with existing data and were not changed.`, true);
-    ui.detected = null; ui.screen = 'complaints'; render();
+    // A recognised complaint goes straight to the interview; otherwise choose the complaint first.
+    if (complaints) { ui.screen = 'case'; ui.tab = 'history'; } else ui.screen = 'complaints';
+    render(); window.scrollTo?.(0, 0);
   },
   'toggle-complaint': (d) => { if (store.activeComplaints().includes(d.key)) store.resolveComplaint(d.key, 'Deselected'); else store.addComplaint(d.key); },
   'search-complaint': (d) => {
@@ -1066,7 +1543,7 @@ const handlers = {
     const st = S();
     st.setFact(d.key, def.options[ui.pendingText.i].v, { origin: 'patient', replace: true, reason: 'Updated by clinician' });
     st.setFact(`${d.key}.detail`, text, { origin: 'patient', replace: true, reason: 'Updated by clinician' });
-    ui.pendingText = null; ui.editKey = null; render();
+    ui.pendingText = null; ui.editKey = null; advanceInterview(); render();
   },
   'answer-duration': (d) => {
     let val;
@@ -1080,7 +1557,12 @@ const handlers = {
     setAnswer(d.key, v);
   },
   'custom-unit': (d) => { ui.custom.unit = d.unit; render(); },
-  'unknown-q': (d) => { S().markUnknown(d.key, originFor(d.key) === 'patient' ? 'patient' : 'clinician'); ui.editKey = null; if (ui.sheet?.type === 'ask') ui.sheet = null; render(); },
+  'unknown-q': (d) => {
+    S().markUnknown(d.key, originFor(d.key) === 'patient' ? 'patient' : 'clinician');
+    ui.editKey = null;
+    if (ui.sheet?.type === 'ask') ui.sheet = null; else advanceInterview();
+    render();
+  },
   'edit-q': (d) => { ui.editKey = d.key; ui.pendingText = null; ui.tab = 'history'; render(); },
   'cancel-edit': () => { ui.editKey = null; ui.pendingText = null; render(); },
   'ask-fact': (d) => { ui.sheet = { type: 'ask', key: d.key }; render(); },
@@ -1103,10 +1585,64 @@ const handlers = {
     store.setFact(key, Number(d.v), { origin: 'measurement', replace: cur !== undefined, reason: 'Reassessed' });
   },
   'exam': async (d) => {
-    const f = examFindings.find((x) => x.fact === d.f);
-    if (store.getFact(f.fact)) { store.removeFact(f.fact, 'Unselected'); return; }
-    const labelOf = (key) => L(examFindings.find((x) => x.fact === key)?.label);
-    await conflictFlow(f.fact, 'present', { origin: 'clinician', excludes: f.excludes }, labelOf);
+    const o = EXAM_OPTION_BY_FACT[d.f];
+    if (!o) return;
+    const yn = FACTS[o.fact]?.type === 'yesno';
+    const sys = EXAM.find((x) => x.key === o.system); const grp = sys.groups.find((g) => g.id === o.group);
+    if (optOn(o)) { store.removeFact(o.fact, 'Unselected'); return; }
+    const opposite = grp.options.filter((x) => x.normal !== o.normal && optOn(x));
+    let keepBoth = null;
+    if (opposite.length) {
+      const r = await ask({
+        title: t('conflictTitle'),
+        body: `<div class="kv"><span>${esc(t('previous'))}</span><b>${esc(opposite.map((x) => x.label).join(', '))}</b></div><div class="kv"><span>${esc(t('incoming'))}</span><b>${esc(o.label)}</b></div>`,
+        fields: [{ name: 'why', label: t('explanation') }],
+        actions: [{ id: 'replace', label: t('replacePrev'), kind: 'primary' }, { id: 'both', label: t('keepBoth'), needs: ['why'] }, { id: 'cancel', label: t('cancel') }],
+      });
+      if (!r || r.action === 'cancel') return;
+      if (r.action === 'replace') for (const x of opposite) store.removeFact(x.fact, 'Replaced by clinician');
+      else keepBoth = r.values.why;
+    }
+    const opts = { origin: 'clinician', replace: true, reason: keepBoth ?? 'Examination finding', ...(keepBoth ? { keepBoth: true } : {}) };
+    store.setFact(o.fact, yn ? 'yes' : 'present', opts);
+    if (o.normal && !keepBoth) for (const x of grp.options) if (!x.normal && FACTS[x.fact]?.type === 'yesno' && store.getFact(x.fact) !== 'no') store.setFact(x.fact, 'no', { origin: 'clinician', replace: true, reason: 'Normal examination recorded' });
+  },
+  'exam-normal': async (d) => {
+    const sys = EXAM.find((x) => x.key === d.sys); if (!sys) return;
+    const groups = normalCandidates(sys); if (!groups.length) return;
+    const ar = ui.lang === 'ar';
+    const r = await ask({
+      title: `${L(sys.title)} — ${ar ? 'طبيعي' : 'normal'}`,
+      body: `<p class="muted">${esc(ar ? 'أبقِ العلامة فقط على ما فحصته فعلاً. ما تُلغى علامته لا يُوثَّق.' : 'Keep ticked only what you actually examined. Unticked items are not documented.')}</p>
+        <div class="chklist">${groups.map((g) => `<label class="chk"><input type="checkbox" name="g-${esc(g.id)}" checked><span><small>${esc(g.title)}</small>${esc(normalLabel(g))}</span></label>`).join('')}</div>`,
+      actions: [{ id: 'ok', label: ar ? 'سجّل المحدد' : 'Record ticked', kind: 'primary' }, { id: 'cancel', label: t('cancel') }],
+    });
+    if (!r || r.action !== 'ok') return;
+    const chosen = groups.filter((g) => r.values[`g-${g.id}`]);
+    for (const g of chosen) recordNormal(g);
+    if (chosen.length) toast(ar ? `تم تسجيل ${chosen.length} عنصر طبيعي` : `${chosen.length} normal finding(s) recorded`);
+    render();
+  },
+  'exam-choice': (d) => { const cur = store.getFact(d.f); if (cur === d.v) store.removeFact(d.f, 'Unselected'); else store.setFact(d.f, d.v, { origin: 'clinician', replace: cur !== undefined, reason: 'Reassessed' }); },
+  'vx-open': (d) => { ui.sheet = { type: 'vx', kind: d.kind, q: '', cat: '' }; render(); loadVocab().then(() => { if (ui.sheet?.type === 'vx') render(); }); },
+  'vx-cat': (d) => { ui.sheet.cat = d.cat; const box = $('#vxres'); if (box) box.innerHTML = vxResults(ui.sheet); render(); },
+  'vx-remove': (d) => { store.removeFact(d.key, 'Removed by clinician'); },
+  'vx-add': async (d) => {
+    const e = vxIndex?.[d.kind]?.find((x) => x.id === d.id);
+    if (!e) return;
+    let extra = {};
+    if (d.kind === 'drug') {
+      const r = await ask({ title: e.label, body: `<p class="muted">${esc(ui.lang === 'ar' ? 'لا توجد جرعة موثّقة لهذا الدواء في البرنامج. اكتب الجرعة والطريقة والتكرار كما تقررها.' : 'No verified dose for this entry in the app. Enter dose, route and frequency as you decide.')}</p>`,
+        fields: [{ name: 'instr', label: ui.lang === 'ar' ? 'الجرعة والطريقة والتكرار' : 'Dose, route and frequency' }],
+        actions: [{ id: 'ok', label: VX.drug.acts[0][2], kind: 'primary', needs: ['instr'] }, { id: 'cancel', label: t('cancel') }] });
+      if (!r || r.action !== 'ok') return;
+      extra = { instr: r.values.instr.trim() };
+    }
+    addPick(store, d.kind, e, d.st, extra);
+    if (d.kind === 'drug') store.addEvent({ type: 'order', text: `${e.label} — ${extra.instr} — ordered.` });
+    if (d.kind === 'procedure') store.addEvent({ type: 'procedure', text: `${e.label} (${e.code}) performed.` });
+    if (d.kind === 'lab' || d.kind === 'imaging') store.addEvent({ type: 'investigation', text: `${e.label} requested.` });
+    toast(`${e.label}: ${stTxt(d.st)}`);
   },
   'open-score': (d) => {
     const isScratch = !!d.scratch || !store || ui.screen !== 'case';
@@ -1133,6 +1669,25 @@ const handlers = {
     store.addEvent({ type: 'investigation', text: `${cat?.doc ?? d.id} requested` });
   },
   'inv-undo': (d) => { store.removeFact(invKey(d.id), 'Request withdrawn'); },
+  'plan-approve': () => {
+    const n = approvePlan(pack, store);
+    toast(ui.lang === 'ar' ? `تم الاعتماد: ${n.inv} فحص، ${n.dx} تشخيص، ${n.meds} دواء` : `Approved: ${n.inv} investigation(s), ${n.dx} diagnosis item(s), ${n.meds} medication order(s)`);
+  },
+  'plan-skip': (d) => {
+    const k = skipKey(d.kind, d.id);
+    if (store.getFact(k) === 'yes') store.removeFact(k, 'Restored by clinician');
+    else store.setFact(k, 'yes', { origin: 'clinician', reason: 'Declined by clinician' });
+  },
+  'plan-lead': (d) => {
+    const cur = store.getFact('plan.leading');
+    store.setFact('plan.leading', d.id, { origin: 'clinician', replace: cur !== undefined, reason: 'Leading diagnosis chosen by clinician' });
+    const dx = autoPlan(pack, store).differential.find((x) => x.id === d.id);
+    if (dx && store.getFact('assessment.diagnosis') !== undefined) store.setFact('assessment.diagnosis', dx.dx.en, { origin: 'ai_confirmed', replace: true, reason: 'Leading diagnosis changed by clinician' });
+  },
+  'plan-order': (d) => {
+    const m = autoPlan(pack, store).meds.find((x) => x.key === d.key);
+    if (m && !m.blocked) { orderMed(store, m); toast(ui.lang === 'ar' ? 'تم الطلب' : 'Ordered'); }
+  },
   'resus-open': () => {
     if (!store || isFinal()) adopt(new CaseStore(createCase({ language: ui.lang })), 'resus');
     ui.screen = 'resus'; ui.sheet = null; render();
@@ -1288,8 +1843,17 @@ function onInput(e) {
   const b = e.target.dataset.bind;
   if (!b) return;
   if (b === 'age') ui.intake.age = e.target.value;
-  else if (b === 'text') ui.intake.text = e.target.value;
+  else if (b === 'text') {
+    ui.intake.text = e.target.value;
+    clearTimeout(onInput.lp);
+    onInput.lp = setTimeout(() => { const box = $('#live-parse'); if (box) box.innerHTML = parsePreviewHtml(ui.intake.text); const dh = $('#demo-hand'); if (dh) dh.open = demoHandOpen(); }, 120);
+  }
   else if (b === 'cn') ui.custom.n = e.target.value;
+  else if (b === 'vxq' && ui.sheet?.type === 'vx') {
+    ui.sheet.q = e.target.value;
+    clearTimeout(onInput.vx);
+    onInput.vx = setTimeout(() => { const box = $('#vxres'); if (box && vxIndex) box.innerHTML = vxResults(ui.sheet); }, 90);
+  }
   else if (b === 'ptext' && ui.pendingText) ui.pendingText.text = e.target.value;
   else if (b === 'search') { ui.search = e.target.value; const list = $('#clist'); if (list) list.innerHTML = complaintListHtml(); }
   else if (b === 'dsearch') { ui.drugSearch = e.target.value; const keep = e.target.selectionStart; render(); const el = $('#dsearch'); if (el) { el.focus(); el.setSelectionRange(keep, keep); } }
@@ -1305,6 +1869,11 @@ function onInput(e) {
 }
 
 async function onChange(e) {
+  // Numbers and free text commit when the field is left (Enter is handled on keydown).
+  const el = e.target;
+  if (el.dataset?.vital) { await commitVital(el).catch(fail); return; }
+  if (el.id === 'num-input' && el.value !== '' && num(el.value) !== store.getFact(el.dataset.key)) { handlers['answer-num'](el.dataset); return; }
+  if (el.id === 'ptext' && el.value.trim() && ui.pendingText?.key === el.dataset.key) { handlers['answer-text'](el.dataset); return; }
   const key = e.target.dataset.save;
   if (key) {
     try {
@@ -1325,6 +1894,14 @@ async function onChange(e) {
 function onKeydown(e) {
   if (e.key === 'Escape' && ui.sheet) { ui.sheet = null; render(); return; }
   if (e.key !== 'Enter') return;
+  if (e.target.dataset?.vital) {
+    // Vitals flow: Enter saves the field and moves to the next one (BP → DBP → HR → RR → …).
+    e.preventDefault();
+    const all = [...document.querySelectorAll('[data-vital]:not([disabled])')];
+    const next = all[all.indexOf(e.target) + 1];
+    if (next) next.focus(); else e.target.blur();
+    return;
+  }
   const act = e.target.dataset?.enter;
   if (act && handlers[act]) { e.preventDefault(); Promise.resolve(handlers[act](e.target.dataset, e)).catch(fail); }
 }
@@ -1345,16 +1922,33 @@ async function boot() {
   document.addEventListener('input', onInput);
   document.addEventListener('change', onChange);
   document.addEventListener('keydown', onKeydown);
+  // remember which examination systems are open across re-renders
+  document.addEventListener('toggle', (e) => {
+    if (e.target.matches?.('details.exsys')) { ui.openSys = ui.openSys ?? {}; ui.openSys[e.target.dataset.sys] = e.target.open; }
+    if (e.target.dataset?.keep) { ui.openKeep = ui.openKeep ?? {}; ui.openKeep[e.target.dataset.keep] = e.target.open; }
+  }, true);
   window.addEventListener('pagehide', () => { autosave?.flush(); });
+  let wasWide = wide();
+  window.addEventListener('resize', () => { const w = wide(); if (w !== wasWide) { wasWide = w; render(); } });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') autosave?.flush(); });
   window.addEventListener('error', (e) => fail(e.error ?? e.message));
   window.addEventListener('unhandledrejection', (e) => fail(e.reason));
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    // A new version takes over in the background. On the home screen it loads at once (cases are autosaved);
+    // inside a case it is used the next time the app opens, so nothing interrupts the clinician.
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || reloading) return;
+      reloading = true;
+      if (ui.screen === 'home') { autosave?.flush(); location.reload(); }
+      else toast(ui.lang === 'ar' ? 'تم تنزيل نسخة أحدث — ستعمل عند فتح التطبيق مرة أخرى.' : 'A newer version is ready — it loads next time you open the app.');
+    });
     navigator.serviceWorker.register('./service-worker.js').catch(() => { /* offline support optional */ });
   }
   resusTimer = setInterval(tickResus, 1000);
   render();
   if (!ui.storageOk) toast('Storage unavailable: data will not persist after closing.', true);
-  window.__UFC = { ui, get store() { return store; }, pack, version: APP_VERSION, copy: (target) => copyText(store, pack, target) };
+  window.__UFC = { ui, get store() { return store; }, pack, version: APP_VERSION, copy: (target) => copyText(store, pack, target), output: (name) => OUTPUTS[name](store, pack) };
 }
 boot();

@@ -1,5 +1,6 @@
 // Multi-complaint reasoning (Phase 2). Pure and data-driven: all clinical content is in pack.json.
 // Output is DECISION SUPPORT ("AI suggestion" level). Nothing here becomes a fact until the clinician accepts it.
+import { memo } from './memo.js';
 import { evalCondition } from './questions.js';
 
 /** Values map the rule conditions read from: current active facts + `complaint.<key>` flags. */
@@ -13,7 +14,11 @@ export function reasoningValues(store) {
  * @returns {{ clusters, specialties, mustNotMiss, scores, unsourced, ageNote }}
  * mustNotMiss: [{ id, dx, why, sources[], reasons[] }]  (merged across rules, each diagnosis once)
  */
-export function reason(pack, store, values = reasoningValues(store)) {
+export function reason(pack, store, values) {
+  if (values !== undefined) return reason_(pack, store, values);
+  return memo(store, 'reason', () => reason_(pack, store, reasoningValues(store)));
+}
+function reason_(pack, store, values) {
   const rules = (pack.reasoning?.rules ?? []).filter((r) => evalCondition(r.when, values));
   const clusters = [];
   const specialties = [];

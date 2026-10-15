@@ -5,9 +5,19 @@
 //  * Removed or corrected values never appear in the current note (corrections have their own section).
 //  * Empty core sections say "Not documented."
 
+import { memo } from './memo.js';
 import { calcMap, calcGcs, calcBmi, formatBp } from './vitals.js';
 import { FACTS } from '../content/facts.js';
 import { relevantScores } from './workup.js';
+import { EXAM } from '../content/exam.js';
+
+/** Vocabulary picks (vx.<kind>.<id>) of one kind, in the order they were entered. */
+function vx(store, kind) {
+  const prefix = `vx.${kind}.`;
+  return Object.values(store.state.facts).filter((f) => f.status === 'active' && f.key.startsWith(prefix))
+    .sort((a, b) => a.at - b.at).map((f) => f.value);
+}
+const lc = (s) => (s && !/^[A-Z0-9]{2}/.test(s) ? s[0].toLowerCase() + s.slice(1) : s);
 
 export const joinList = (items) => {
   const a = items.filter(Boolean);
@@ -133,7 +143,12 @@ function hpiSection(store, pack) {
     if (s) lines.push(s);
   });
   if (denied.length) lines.push(`Patient denies ${joinList(denied)}.`);
-  return [lines.join(' ')];
+  const sx = vx(store, 'symptom');
+  const yes = sx.filter((x) => x.status === 'present').map((x) => lc(x.label));
+  const no = sx.filter((x) => x.status === 'absent').map((x) => lc(x.label));
+  if (yes.length) lines.push(`Also reports ${joinList(yes)}.`);
+  if (no.length) lines.push(`Denies ${joinList(no)}.`);
+  return lines.length ? [lines.join(' ')] : [];
 }
 
 function historySection(store, pack) {
@@ -180,6 +195,11 @@ function historySection(store, pack) {
   for (const x of sharedFacts(store, pack, 'social')) {
     lines.push(x.value === 'yes' ? `${cap(x.def.noun)}.` : x.value === 'no' ? `No ${x.def.noun}.` : `${cap(x.def.noun)}: unknown.`);
   }
+  for (const x of vx(store, 'pmh')) pmhYes.push(lc(x.label));
+  const meds = vx(store, 'med').map((x) => x.label);
+  if (meds.length) lines.push(`Current medications: ${joinList(meds)}.`);
+  const allergies = vx(store, 'allergy').map((x) => x.label);
+  if (allergies.length) lines.push(`Drug allergies recorded: ${joinList(allergies)}.`);
   const pmh = [];
   if (pmhYes.length) pmh.push(`Past medical history: ${joinList(pmhYes)}.`);
   if (pmhNo.length) pmh.push(`Patient denies history of ${joinList(pmhNo)}.`);
@@ -221,15 +241,24 @@ function vitalsSection(store) {
 
 function examSection(store, pack) {
   const lines = [];
-  for (const sys of pack.exam) {
+  for (const sys of EXAM) {
     const found = [];
-    for (const f of sys.findings) {
-      if (store.getFact(f.fact) === undefined) continue;
-      const note = store.getFactRecord(f.fact)?.note;
-      found.push(note ? `${f.doc} (clinician note: ${note})` : f.doc);
+    for (const g of sys.groups) {
+      for (const o of g.options) {
+        if (FACTS[o.fact]) continue; // score inputs are documented once, below
+        const v = store.getFact(o.fact);
+        if (v === undefined || v === 'no') continue;
+        const note = store.getFactRecord(o.fact)?.note;
+        found.push(note ? `${o.doc} (clinician note: ${note})` : o.doc);
+      }
     }
     if (found.length) lines.push(`${sys.title.en}: ${joinList(found)}.`);
   }
+  const signs = vx(store, 'sign');
+  const sp = signs.filter((x) => x.status === 'present').map((x) => lc(x.label));
+  const sa = signs.filter((x) => x.status === 'absent').map((x) => lc(x.label));
+  if (sp.length) lines.push(`Other findings: ${joinList(sp)}.`);
+  if (sa.length) lines.push(`No ${joinList(sa)}.`);
   const pos = []; const neg = [];
   for (const x of sharedFacts(store, pack, 'exam')) {
     if (x.def.type === 'choice') { const d = choiceDoc(x.def, x.value); lines.push(x.unknown ? `${x.def.label}: not assessed.` : `${x.def.label}: ${d}.`); }
@@ -261,6 +290,7 @@ function resultsSection(store, pack) {
 
 function investigationsSection(store, pack) {
   const req = (pack.investigationCatalog ?? []).filter((c) => store.getFact(`inv.${c.id}`) === 'requested').map((c) => c.doc);
+  for (const k of ['lab', 'imaging']) for (const x of vx(store, k)) if (x.status === 'requested') req.push(x.label);
   return req.length ? [`Requested: ${joinList(req)}.`] : [];
 }
 
@@ -283,12 +313,16 @@ function assessmentSection(store, pack) {
   const imp = store.getFact('assessment.impression');
   const dx = store.getFact('assessment.diagnosis');
   if (imp) lines.push(`Clinical impression: ${imp}`);
-  if (dx) lines.push(`Working diagnosis (clinician-entered): ${dx}`);
+  if (dx) lines.push(store.getFactRecord('assessment.diagnosis')?.origin === 'ai_confirmed'
+    ? `Working diagnosis (auto-generated, approved by clinician): ${dx}`
+    : `Working diagnosis (clinician-entered): ${dx}`);
   lines.push(...judgementLines(store, pack));
   const considered = Object.values(store.state.facts)
     .filter((f) => f.key.startsWith('dx.consider.') && f.status === 'active' && typeof f.value === 'string')
     .map((f) => f.value);
   if (considered.length) lines.push(`Diagnoses to exclude / under consideration (clinician-confirmed): ${joinList(considered)}.`);
+  const coded = vx(store, 'dx');
+  if (coded.length) lines.push(`Diagnoses (clinician-selected, ICD-10-CM): ${coded.map((x) => `${x.label} (${x.code})`).join('; ')}.`);
   return lines;
 }
 
@@ -328,12 +362,15 @@ function correctionsSection(store, tz) {
 export const SECTION_TITLES = Object.freeze({
   patient: 'PATIENT', cc: 'CHIEF COMPLAINT', hpi: 'HISTORY OF PRESENTING ILLNESS', history: 'RELEVANT HISTORY',
   vitals: 'VITAL SIGNS', exam: 'EXAMINATION', investigations: 'INVESTIGATIONS', results: 'RESULTS', scores: 'CLINICAL SCORES',
-  assessment: 'ASSESSMENT', resuscitation: 'RESUSCITATION', treatment: 'TREATMENT GIVEN', reassessment: 'REASSESSMENT',
+  assessment: 'ASSESSMENT', orders: 'TREATMENT ORDERED', resuscitation: 'RESUSCITATION', treatment: 'TREATMENT GIVEN', reassessment: 'REASSESSMENT',
   disposition: 'DISPOSITION', timeline: 'TIMELINE', corrections: 'DOCUMENTATION CORRECTIONS',
 });
 const CORE = new Set(['patient', 'cc', 'hpi', 'vitals', 'exam']);
 
-export function buildSections(store, pack, { tz } = {}) {
+export function buildSections(store, pack, opts = {}) {
+  return opts.tz === undefined ? memo(store, 'sections', () => buildSections_(store, pack, opts)) : buildSections_(store, pack, opts);
+}
+function buildSections_(store, pack, { tz } = {}) {
   const raw = {
     patient: patientSection(store),
     cc: ccSection(store, pack),
@@ -347,7 +384,8 @@ export function buildSections(store, pack, { tz } = {}) {
     assessment: assessmentSection(store, pack),
     reassessment: eventLines(store, 'reassessment', tz),
     resuscitation: eventLines(store, 'resus', tz),
-    treatment: eventLines(store, ['treatment', 'medication'], tz),
+    orders: eventLines(store, 'order', tz),
+    treatment: eventLines(store, ['treatment', 'medication', 'procedure'], tz),
     disposition: dispositionSection(store),
     timeline: eventLines(store, null, tz),
     corrections: correctionsSection(store, tz),
@@ -362,7 +400,10 @@ export function renderSection(section) {
   return `${section.title}\n${body}`;
 }
 
-export function renderCompleteCase(store, pack, { tz } = {}) {
+export function renderCompleteCase(store, pack, opts = {}) {
+  return opts.tz === undefined ? memo(store, 'note', () => renderCompleteCase_(store, pack, opts)) : renderCompleteCase_(store, pack, opts);
+}
+function renderCompleteCase_(store, pack, { tz } = {}) {
   const sections = buildSections(store, pack, { tz }).filter((s) => !s.empty || s.core);
   const head = ['CLINICAL NOTE'];
   if (store.state.demo) head.push('DEMO CASE — NOT A REAL PATIENT');

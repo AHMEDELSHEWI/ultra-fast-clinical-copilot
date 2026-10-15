@@ -122,7 +122,7 @@ test('exam findings, contradictions explained by the clinician are shown in the 
   s.setFact('exam.resp.normal', 'present');
   s.setFact('exam.resp.wheeze', 'present', { excludes: ['exam.resp.normal'], keepBoth: true, reason: 'right clear, left wheeze' });
   const line = section(s, 'exam').lines[0];
-  assert.match(line, /Respiratory: normal breath sounds and wheeze present \(clinician note: right clear, left wheeze\)\./);
+  assert.match(line, /Respiratory: normal breath sounds and wheeze \(clinician note: right clear, left wheeze\)\./);
 });
 
 test('timeline and treatment use event times, not invented ones', () => {

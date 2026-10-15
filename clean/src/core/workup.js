@@ -1,5 +1,6 @@
 // Case-level glue between the store and the deterministic engines (scores, investigations).
 // Builds ONE values map from the current authoritative facts so every engine sees the same data.
+import { memo } from './memo.js';
 import { reason, reasoningValues } from './reasoning.js';
 import { makeCtx, evaluateScore } from './scoreEngine.js';
 import { SCORES, SCORE_BY_ID } from '../content/scores.js';
@@ -37,7 +38,8 @@ export function scoreCtx(store) {
 const UNIVERSAL = [{ id: 'news2', why: 'Early warning score: tracks deterioration in any adult presentation.' }];
 
 /** Relevant scores for this case, each evaluated now. */
-export function relevantScores(pack, store) {
+export function relevantScores(pack, store) { return memo(store, 'relevantScores', () => relevantScores_(pack, store)); }
+function relevantScores_(pack, store) {
   if (store.activeComplaints().length === 0) return [];
   const ctx = scoreCtx(store);
   const r = reason(pack, store, ctx.values);
@@ -48,7 +50,8 @@ export function relevantScores(pack, store) {
 }
 
 /** Evaluate one score by id against the current case (used by the calculator library too). */
-export function evaluateById(store, id) {
+export function evaluateById(store, id) { return memo(store, `score:${id}`, () => evaluateById_(store, id)); }
+function evaluateById_(store, id) {
   const def = SCORE_BY_ID[id];
   return def ? evaluateScore(def, scoreCtx(store)) : null;
 }
