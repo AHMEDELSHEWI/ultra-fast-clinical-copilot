@@ -1,5 +1,5 @@
 /* generated: Ultra Fast Clinical Copilot offline shell. No patient data is cached here. */
-const CACHE = 'ufc-v2.3.0-beta.1-c2026.10.1-beta.1';
+const CACHE = 'ufc-v2.4.0-beta.1-c2026.10.1-beta.1';
 const SHELL = ["./","./index.html","./manifest.webmanifest","./icon.svg","./vocab/hpo.json.gz","./vocab/icd10cm.json.gz","./vocab/icd10pcs.json.gz","./vocab/rxnorm.json.gz"];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k.startsWith('ufc-') && k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });

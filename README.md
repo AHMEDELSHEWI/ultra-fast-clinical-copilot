@@ -1,6 +1,15 @@
 # Ultra Fast Clinical Copilot
 
-Current release: **V1.0.8**
+**Open the app:** https://ahmedelshewi.github.io/ultra-fast-clinical-copilot/ (redirects to `/app/`) — works online and offline (installable PWA). Current release: **2.4.0-beta.1**.
+
+- `app/index.html` — light web app; medical vocabularies load on first use and are cached for offline use.
+- `app/ufc-offline-full.html` — one self-contained file with everything embedded (for sharing as a file).
+- Source code: branch `rewrite/clean-core`. Clinical content is DRAFT pending consultant review; the clinician is responsible for every decision.
+- Older releases (V1.0.x) remain available as `v1.0.*.html`.
+
+---
+
+## Archive — V1.0.8 notes
 
 V1.0.8 keeps automatic multilingual dictation with English clinical documentation and introduces a faster, tap-first workflow:
 
